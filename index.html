@@ -120,7 +120,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.1)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.2)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -141,7 +141,7 @@
           <h2>Parametrit</h2><p class="hint">Henkilölista ja CSV-tallennuksen asetukset.</p>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
-          <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Selain sallii sivun näyttää tiedostonimen, mutta piilottaa valitun tiedoston koko levypolun.</p><label for="csvPath">Uuden CSV-tiedoston nimi</label><input id="csvPath" type="text" placeholder="esim. koulukyydit.csv" autocomplete="off"><button class="secondary" id="selectCsv" type="button">Valitse olemassa oleva CSV</button><button class="secondary" id="openCsv" type="button">Luo uusi CSV-tiedosto</button><button class="secondary" id="downloadCsv" type="button">Lataa CSV-varmuuskopio</button></div>
+          <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Selain sallii sivun näyttää tiedostonimen, mutta piilottaa valitun tiedoston koko levypolun.</p><label for="csvPath">Uuden CSV-tiedoston nimi</label><input id="csvPath" type="text" placeholder="esim. koulukyydit.csv" autocomplete="off"><button class="secondary" id="selectCsv" type="button">Valitse olemassa oleva CSV</button><button class="secondary" id="openCsv" type="button">Luo uusi CSV-tiedosto</button><button class="secondary" id="downloadCsv" type="button">Lataa CSV-varmuuskopio</button><button class="secondary" id="updateCsv" type="button">Päivitä CSV tiedosto</button></div>
         </section>
       </aside>
     </div>
@@ -301,6 +301,7 @@
       });
       $('csvPath').value=localStorage.getItem(CSV_NAME_KEY)||'';
       $('csvPath').addEventListener('input',()=>localStorage.setItem(CSV_NAME_KEY,$('csvPath').value));
+      $('updateCsv').addEventListener('click',async()=>{if(!csvHandle){status('Valitse ensin olemassa oleva tai luo uusi CSV-tiedosto.');return;}await writeCsv();});
       $('downloadCsv').addEventListener('click',()=>{const blob=new Blob([makeCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='koulukyydit.csv';a.click();URL.revokeObjectURL(url);status('CSV-varmuuskopio ladattu.');});
       async function storeCsvHandle(handle){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('handles','readwrite');tx.objectStore('handles').put(handle,'csv');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();}catch{}}
       async function restoreCsvHandle(){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const handle=await new Promise((resolve,reject)=>{const r=db.transaction('handles','readonly').objectStore('handles').get('csv');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();if(!handle)return;csvHandle=handle;$('csvPath').value=handle.name;$('activeCsv').value=handle.name+' (välimuistista ladattu; tiedoston kansiopolku piilotettu)';localStorage.setItem(CSV_NAME_KEY,handle.name);status('Merkinnät ladattu selaimen välimuistista.');}catch{status('Merkinnät ladattu selaimen välimuistista.');}}
