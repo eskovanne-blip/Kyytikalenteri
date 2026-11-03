@@ -16,6 +16,7 @@
     .header-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end }
     .save-state { min-height:18px; color:var(--muted); font-size:12px; text-align:right; margin-top:6px }
     h1 { font-size:clamp(26px,4vw,36px); letter-spacing:-.04em; margin:0 0 5px }
+    .version { display:inline-block; font-size:.48em; font-weight:600; letter-spacing:0; vertical-align:middle; white-space:nowrap }
     .subtitle { margin:0; color:var(--muted) }
     .layout { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:18px; align-items:start }
     .card { background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px #17362908 }
@@ -119,7 +120,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit</h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.0)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -144,7 +145,7 @@
         </section>
       </aside>
     </div>
-    <footer>Tiedot tallentuvat automaattisesti tähän selaimeen. · Versio 1.0.0</footer>
+    <footer>Tiedot tallentuvat automaattisesti tähän selaimeen.</footer>
   </main>
   <script>
     (() => {
