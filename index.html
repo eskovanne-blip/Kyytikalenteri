@@ -246,7 +246,6 @@
             const notes=Array.isArray(entry.notes)?entry.notes:[];
             const drivers=notes.map(driverName).filter(Boolean);
             driverRides+=drivers.filter(driver=>driver.toLocaleLowerCase('fi-FI')===normalizedName).length;
-            if(drivers.length)continue;
             if(Array.isArray(entry.to)&&entry.to.includes(i))to++;
             if(Array.isArray(entry.home)&&entry.home.includes(i))home++;
           }
