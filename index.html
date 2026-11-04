@@ -120,7 +120,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.2)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.3)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -139,6 +139,7 @@
         <section class="card month-report" id="monthReport"></section>
         <section class="card panel">
           <h2>Parametrit</h2><p class="hint">Henkilölista ja CSV-tallennuksen asetukset.</p>
+          <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
           <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Selain sallii sivun näyttää tiedostonimen, mutta piilottaa valitun tiedoston koko levypolun.</p><label for="csvPath">Uuden CSV-tiedoston nimi</label><input id="csvPath" type="text" placeholder="esim. koulukyydit.csv" autocomplete="off"><button class="secondary" id="selectCsv" type="button">Valitse olemassa oleva CSV</button><button class="secondary" id="openCsv" type="button">Luo uusi CSV-tiedosto</button><button class="secondary" id="downloadCsv" type="button">Lataa CSV-varmuuskopio</button><button class="secondary" id="updateCsv" type="button">Päivitä CSV tiedosto</button></div>
@@ -165,6 +166,7 @@
       try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { data = {}; }
       if (!Array.isArray(data.people)) data.people=[];
       if (!data.trips || typeof data.trips !== 'object') data.trips={};
+      if (!Number.isFinite(Number(data.tripPrice)) || Number(data.tripPrice)<0) data.tripPrice=1;
       if (!Array.isArray(data.people)) data.people = [];
       if (!data.trips || typeof data.trips !== 'object') data.trips = {};
       for (const entry of Object.values(data.trips)) if (Array.isArray(entry.notes)) entry.notes=entry.notes.map(normalizeNote);
@@ -196,6 +198,7 @@
       function queueCsvWrite(){if(!csvHandle)return;clearTimeout(writeTimer);status('Tallennetaan CSV-tiedostoon…');writeTimer=setTimeout(writeCsv,250);}
       function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.trips=imported.trips;}
       const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
       const driverDirection = note => note.endsWith(' ajoi aamulla')?'morning':note.endsWith(' ajoi illalla')?'evening':null;
       const driverName = note => driverDirection(note)?note.slice(0,-12).trim():null;
       const trip = (date, way) => {
@@ -250,13 +253,13 @@
             if(Array.isArray(entry.to)&&entry.to.includes(i))to++;
             if(Array.isArray(entry.home)&&entry.home.includes(i))home++;
           }
-          return {name,to,home,driverRides,total:to+home-driverRides};
+          return {name,to,home,driverRides,total:(to+home-driverRides)*Number(data.tripPrice)};
         });
         const sentAt = new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(new Date());
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0);
-        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${p.total} € ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina -${p.driverRides}`:''})`)];
+        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)} € ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina -${p.driverRides}`:''})`)];
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A (aamu)</th><th>I (ilta)</th><th>Kuskina</th><th>Yhteensä</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${p.total} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Yksi matkustettu suunta maksaa 1 €. Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A (aamu)</th><th>I (ilta)</th><th>Kuskina</th><th>Yhteensä</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${euro(p.total)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
       function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
@@ -264,6 +267,8 @@
       $('days').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;const d=new Date(`${selected}T12:00:00`);cursor=new Date(d.getFullYear(),d.getMonth(),1);render()});
       $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;if(data.people.some(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'))){input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
       $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
+      $('tripPrice').value=Number(data.tripPrice).toFixed(2);
+      $('tripPrice').addEventListener('change',e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0){data.tripPrice=Math.round(value*100)/100;save();renderReport();e.target.value=data.tripPrice.toFixed(2);}});
       $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const i=Number(b.dataset.remove);data.people.splice(i,1);for(const entry of Object.values(data.trips)){for(const way of ['to','home'])if(Array.isArray(entry[way]))entry[way]=entry[way].filter(n=>n!==i).map(n=>n>i?n-1:n);}save();render()});
       $('detail').addEventListener('change',e=>{
         const addNote=note=>{if(!data.trips[selected])data.trips[selected]={to:[],home:[]};const notes=Array.isArray(data.trips[selected].notes)?data.trips[selected].notes:[];if(!notes.includes(note))data.trips[selected].notes=[...notes,note];save();render();};
