@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.6)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.7)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -276,7 +276,7 @@
       function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
       $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
-      $('days').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;const d=new Date(`${selected}T12:00:00`);cursor=new Date(d.getFullYear(),d.getMonth(),1);render();$('detail').querySelector('[data-way="to"]')?.focus({preventScroll:true})});
+      $('days').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;const d=new Date(`${selected}T12:00:00`);cursor=new Date(d.getFullYear(),d.getMonth(),1);render();setTimeout(()=>$('detail').querySelector('[data-way="to"]')?.focus(),0)});
       $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;if(data.people.some(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'))){input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
       $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
       $('tripPrice').value=Number(data.tripPrice).toFixed(2);
