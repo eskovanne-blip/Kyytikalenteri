@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.4)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.5)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -262,6 +262,17 @@
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
         $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A (aamu)</th><th>I (ilta)</th><th>Kuskina</th><th>Yhteensä</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${euro(p.total)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
+      function backupFilename() {
+        const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
+        const original=($('csvPath').value.trim().split(/[\\/]/).pop()||'koulukyydit.csv').replace(/[^\w.\- äöåÄÖÅ]/g,'_');
+        const stem=original.replace(/\.csv$/i,'')||'koulukyydit';
+        return `${year}_${month}_${stem}.csv`;
+      }
+      function downloadBackup() {
+        const blob=new Blob([makeCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download=backupFilename();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+        status(`CSV-varmuuskopio ladattu: ${a.download}`);
+      }
       function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
       $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
@@ -309,6 +320,10 @@
       $('csvPath').addEventListener('input',()=>localStorage.setItem(CSV_NAME_KEY,$('csvPath').value));
       $('updateCsv').addEventListener('click',async()=>{if(!csvHandle){status('Valitse ensin olemassa oleva tai luo uusi CSV-tiedosto.');return;}await writeCsv();});
       $('downloadCsv').addEventListener('click',()=>{const blob=new Blob([makeCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='koulukyydit.csv';a.click();URL.revokeObjectURL(url);status('CSV-varmuuskopio ladattu.');});
+      $('monthReport').addEventListener('click',e=>{
+        const link=e.target.closest('.whatsapp-link');if(!link)return;
+        if(window.confirm('Tehdäänkö samalla CSV-varmuuskopio?'))downloadBackup();
+      });
       async function storeCsvHandle(handle){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('handles','readwrite');tx.objectStore('handles').put(handle,'csv');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();}catch{}}
       async function restoreCsvHandle(){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const handle=await new Promise((resolve,reject)=>{const r=db.transaction('handles','readonly').objectStore('handles').get('csv');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();if(!handle)return;csvHandle=handle;$('csvPath').value=handle.name;$('activeCsv').value=handle.name+' (välimuistista ladattu; tiedoston kansiopolku piilotettu)';localStorage.setItem(CSV_NAME_KEY,handle.name);status('Merkinnät ladattu selaimen välimuistista.');}catch{status('Merkinnät ladattu selaimen välimuistista.');}}
       render();
