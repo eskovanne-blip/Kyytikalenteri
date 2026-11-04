@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.7)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.8)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -286,7 +286,7 @@
         const addNote=note=>{if(!data.trips[selected])data.trips[selected]={to:[],home:[]};const notes=Array.isArray(data.trips[selected].notes)?data.trips[selected].notes:[];if(!notes.includes(note))data.trips[selected].notes=[...notes,note];save();render();};
         if(e.target.id==='dayNoteSelect'||e.target.id==='eveningNoteSelect'){
           const evening=e.target.id==='eveningNoteSelect', note=e.target.value;
-          if(note==='Toisen kyydissä'){const rider=$(evening?'eveningRiderSelect':'otherRiderSelect');rider.hidden=false;rider.focus();return;}
+          if(note==='Toisen kyydissä'){const rider=$(evening?'eveningRiderSelect':'otherRiderSelect');rider.hidden=false;rider.focus();try{rider.showPicker();}catch{rider.click();}return;}
           if(note)addNote(note);
           return;
         }
