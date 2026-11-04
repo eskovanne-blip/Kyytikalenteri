@@ -53,6 +53,7 @@
     .add-row { display:flex; gap:7px }
     .add-row input { min-width:0; flex:1; border:1px solid var(--line); border-radius:9px; padding:9px 10px; outline:none }
     .path-row { display:grid; gap:7px; margin-top:14px }
+    .path-row + .add-row { margin-top:14px }
     .path-row label { font-size:13px; font-weight:650 }
     .path-row input { width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; outline:none }
     input:focus { border-color:var(--green) }
@@ -120,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.3)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.4)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
