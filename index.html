@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.0.8)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.0.9)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -235,8 +235,8 @@
         const dayLabel = new Intl.DateTimeFormat('fi-FI',{weekday:'long',day:'numeric',month:'numeric',year:'numeric'}).format(date);
         const dayNotes = data.trips[selected]?.notes||[];
         const noteOptions = ['Toisen kyydissä','Oma kyyti','Poissa koulusta/ei kuljettu','Loma'];
-        const morningControls=`<div class="note-controls"><select id="dayNoteSelect" aria-label="Aamun merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled>Valitse henkilö</option>${data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
-        const eveningControls=`<div class="note-controls"><select id="eveningNoteSelect" aria-label="Illan merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled>Valitse henkilö</option>${data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const morningControls=`<div class="note-controls"><select id="dayNoteSelect" aria-label="Aamun merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const eveningControls=`<div class="note-controls"><select id="eveningNoteSelect" aria-label="Illan merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
         $('detail').innerHTML = `<div class="detail-head"><div><h2>${safe(dayLabel)}</h2><button class="today-link" id="goToday">Siirry tähän päivään</button></div><div class="day-actions"><button class="day-action add-all" id="addAll" type="button" aria-label="Lisää kaikki henkilöt tälle päivälle">+ KAIKKI</button><button class="day-action remove-all" id="removeAll" type="button" aria-label="Poista kaikki henkilöt tältä päivältä">- KAIKKI</button></div></div>${dayNotes.length?`<div class="day-notes">${dayNotes.map(note=>`<span class="day-note-chip ${driverDirection(note)?`driver-${driverDirection(note)}`:''}">${safe(note)}<button class="note-remove" data-remove-note="${safe(note)}" type="button" aria-label="Poista merkintä ${safe(note)}">×</button></span>`).join('')}</div>`:''}${directionMarkup(selected,'to','Kotoa kouluun','Keitä matkusti samalla autolla?','school',morningControls)}${directionMarkup(selected,'home','Koulusta kotiin','Keitä matkusti samalla autolla?','home',eveningControls)}`;
       }
       function renderReport() {
