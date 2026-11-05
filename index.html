@@ -127,7 +127,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.12)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.13)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -188,7 +188,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.12'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.13'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         for(const payment of data.payments) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
@@ -279,6 +279,7 @@
       }
       function renderReport() {
         const title = new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(cursor).toLocaleUpperCase('fi-FI');
+        const selectedMonth=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`;
         const counts = data.people.map((name,i) => {
           const normalizedName=name.trim().toLocaleLowerCase('fi-FI');
           let to=0, home=0, driverRides=0;
@@ -292,13 +293,14 @@
             if(Array.isArray(entry.to)&&entry.to.includes(i))to++;
             if(Array.isArray(entry.home)&&entry.home.includes(i))home++;
           }
-          return {name,to,home,driverRides,total:(to+home-driverRides)*Number(data.tripPrice)};
+          const paid=data.payments.filter(payment=>payment.person===name&&payment.month===selectedMonth).reduce((sum,payment)=>sum+Number(payment.amount||0),0);
+          return {name,to,home,driverRides,total:(to+home-driverRides)*Number(data.tripPrice),paid};
         });
         const sentAt = new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(new Date());
-        const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0);
+        const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid>0);
         const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)} € ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina -${p.driverRides}`:''})`)];
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A (aamu)</th><th>I (ilta)</th><th>Kuskina</th><th>Yhteensä</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${euro(p.total)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Yht.</th><th>Maksettu</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${euro(p.total)} €</td><td>${euro(p.paid)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
       function backupFilename() {
         const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
