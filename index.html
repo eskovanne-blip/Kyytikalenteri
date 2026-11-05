@@ -56,6 +56,10 @@
     .path-row + .add-row { margin-top:14px }
     .path-row label { font-size:13px; font-weight:650 }
     .path-row input { width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; outline:none }
+    .payments-button { width:100% }
+    .payment-panel { display:grid; gap:7px; margin-top:8px }
+    .payment-panel[hidden] { display:none }
+    .payment-panel select,.payment-panel input { width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:#fff; color:var(--ink) }
     input:focus { border-color:var(--green) }
     .primary { background:var(--green); color:#fff; border-color:var(--green); font-weight:650; padding:9px 13px }
     .primary:hover { background:#1c5943; border-color:#1c5943 }
@@ -121,7 +125,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.8)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.9)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -141,6 +145,7 @@
         <section class="card panel">
           <h2>Parametrit</h2><p class="hint">Henkilön poistaminen piilottaa nimen uusista kirjauksista ja säilyttää aiemmat merkinnät.</p>
           <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
+          <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Maksut</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Henkilö</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><button class="primary" id="savePayment" type="button">Tallenna saldo</button></div></div></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
           <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p></div>
@@ -168,6 +173,7 @@
       try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { data = {}; }
       if (!Array.isArray(data.people)) data.people=[];
       if (!Array.isArray(data.inactivePeople)) data.inactivePeople=[];
+      if (!Array.isArray(data.payments)) data.payments=[];
       if (!data.trips || typeof data.trips !== 'object') data.trips={};
       if (!Number.isFinite(Number(data.tripPrice)) || Number(data.tripPrice)<0) data.tripPrice=1;
       if (!Array.isArray(data.people)) data.people = [];
@@ -180,7 +186,8 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.8'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.9'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        for(const payment of data.payments) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
           const entry=data.trips[date];
@@ -194,17 +201,37 @@
         for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell='';}else cell+=c;}
         if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}
         if(!rows.length||rows[0].map(v=>v.replace(/^\uFEFF/,'').trim()).join(',')!=='type,date,direction,person')throw new Error('CSV-tiedoston otsakerivi ei ole kelvollinen.');
-        const imported={people:[],inactivePeople:[],trips:{}};
-        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
+        const imported={people:[],inactivePeople:[],payments:[],trips:{}};
+        for(const [type,,direction,person] of rows.slice(1))if(type==='person'&&person){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}
+        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='saldo'&&/^\d{4}-\d{2}$/.test(date)&&Number.isFinite(Number(direction))){if(!imported.people.includes(person))imported.people.push(person);imported.payments.push({person,month:date,amount:Number(direction)});}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
         return imported;
       }
       const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); queueCsvWrite(); };
       async function writeCsv(){if(!csvHandle)return;try{let p=await csvHandle.queryPermission({mode:'readwrite'});if(p!=='granted')p=await csvHandle.requestPermission({mode:'readwrite'});if(p!=='granted'){status('CSV-tallennus odottaa lupaa.');return;}const w=await csvHandle.createWritable();await w.write(makeCsv());await w.close();status('Tallennettu CSV-tiedostoon.');}catch{status('CSV-tallennus ei onnistunut. Lataa varmuuskopio.');}}
       function queueCsvWrite(){if(!csvHandle)return;clearTimeout(writeTimer);status('Tallennetaan CSV-tiedostoon…');writeTimer=setTimeout(writeCsv,250);}
-      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.trips=imported.trips;}
+      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.payments=imported.payments;data.trips=imported.trips;}
       const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
       const activePeople = () => data.people.map((name,index)=>({name,index})).filter(person=>!data.inactivePeople.includes(person.name));
+      function monthlyBalance(personIndex, month) {
+        const normalizedName=data.people[personIndex].trim().toLocaleLowerCase('fi-FI');
+        let to=0,home=0,driverRides=0;
+        for(const [date,entry] of Object.entries(data.trips)) {
+          if(!date.startsWith(`${month}-`))continue;
+          const notes=Array.isArray(entry.notes)?entry.notes:[];
+          driverRides+=notes.map(driverName).filter(Boolean).filter(name=>name.trim().toLocaleLowerCase('fi-FI')===normalizedName).length;
+          if(Array.isArray(entry.to)&&entry.to.includes(personIndex))to++;
+          if(Array.isArray(entry.home)&&entry.home.includes(personIndex))home++;
+        }
+        return (to+home-driverRides)*Number(data.tripPrice);
+      }
+      function previousMonth() {
+        const date=new Date();date.setDate(1);date.setMonth(date.getMonth()-1);
+        return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+      }
+      function availablePaymentMonths() {
+        return [...new Set([previousMonth(),...Object.keys(data.trips).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)).map(date=>date.slice(0,7)),...data.payments.map(payment=>payment.month)])].sort().reverse();
+      }
       const driverDirection = note => note.endsWith(' ajoi aamulla')?'morning':note.endsWith(' ajoi illalla')?'evening':null;
       const driverName = note => driverDirection(note)?note.slice(0,-12).trim():null;
       const trip = (date, way) => {
@@ -291,6 +318,30 @@
       $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
       $('tripPrice').value=Number(data.tripPrice).toFixed(2);
       $('tripPrice').addEventListener('change',e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0){data.tripPrice=Math.round(value*100)/100;save();renderReport();e.target.value=data.tripPrice.toFixed(2);}});
+      $('paymentsButton').addEventListener('click',()=>{
+        const panel=$('paymentPanel');panel.hidden=!panel.hidden;$('paymentsButton').setAttribute('aria-expanded',String(!panel.hidden));
+        if(panel.hidden)return;
+        $('paymentPerson').innerHTML='<option value="" selected disabled>Valitse henkilö</option>'+data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
+        $('paymentMonthGroup').hidden=true;$('paymentAmountGroup').hidden=true;
+      });
+      $('paymentPerson').addEventListener('change',e=>{
+        const personIndex=data.people.indexOf(e.target.value);if(personIndex<0)return;
+        const months=availablePaymentMonths(),monthSelect=$('paymentMonth');
+        monthSelect.innerHTML=months.map(month=>{const [year,number]=month.split('-');const label=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(Number(year),Number(number)-1,1));return `<option value="${month}">${safe(label)}</option>`;}).join('');
+        monthSelect.value=previousMonth();$('paymentMonthGroup').hidden=false;$('paymentAmountGroup').hidden=false;
+        $('paymentAmount').value=Math.max(0,monthlyBalance(personIndex,monthSelect.value)).toFixed(2);
+      });
+      $('paymentMonth').addEventListener('change',e=>{
+        const personIndex=data.people.indexOf($('paymentPerson').value);if(personIndex<0)return;
+        $('paymentAmount').value=Math.max(0,monthlyBalance(personIndex,e.target.value)).toFixed(2);
+      });
+      $('savePayment').addEventListener('click',()=>{
+        const person=$('paymentPerson').value,month=$('paymentMonth').value,amount=Number($('paymentAmount').value);
+        if(!person||!/^\d{4}-\d{2}$/.test(month)||!Number.isFinite(amount)||amount<0){status('Tarkista maksun henkilö, kuukausi ja summa.');return;}
+        data.payments.push({person,month,amount:Math.round(amount*100)/100});save();$('paymentPanel').hidden=true;$('paymentsButton').setAttribute('aria-expanded','false');
+        if(!csvHandle)status('Saldo tallennettu selaimeen. Valitse CSV, jotta se tallentuu tiedostoon.');
+        else status('Saldo tallennettu.');
+      });
       $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const name=data.people[Number(b.dataset.remove)];if(name&&!data.inactivePeople.includes(name))data.inactivePeople.push(name);save();render()});
       $('detail').addEventListener('change',e=>{
         const addNote=note=>{if(!data.trips[selected])data.trips[selected]={to:[],home:[]};const notes=Array.isArray(data.trips[selected].notes)?data.trips[selected].notes:[];if(!notes.includes(note))data.trips[selected].notes=[...notes,note];save();render();};
