@@ -175,10 +175,10 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
     const firebaseApp = initializeApp({apiKey:'AIzaSyDE6LNqHnV_MHzJxDcBsKkjT1Ye3ZH2jBQ',authDomain:'kyytikalenteri-auth.firebaseapp.com',projectId:'kyytikalenteri-auth',storageBucket:'kyytikalenteri-auth.firebasestorage.app',messagingSenderId:'274160528683',appId:'1:274160528683:web:315c3073bf18b9ba8fa96e'});
     const auth = getAuth(firebaseApp), firestore = getFirestore(firebaseApp);
-    let currentUser = null, householdId = null, remoteStateRef = null, applyingRemote = false;
+    let currentUser = null, householdId = null, remoteStateRef = null, stopSync = null;
     const authMessage = text => { document.getElementById('authMessage').textContent = text; };
     const authError = error => authMessage(error?.message || 'Toiminto ei onnistunut. Tarkista tiedot ja yritä uudelleen.');
     const appPanel = document.getElementById('calendarApp');
@@ -190,7 +190,7 @@
     document.getElementById('createInvite').addEventListener('click', async () => { if(!householdId||!currentUser) return; const email=prompt('Perheenjäsenen sähköpostiosoite:')?.trim().toLowerCase(); if(!email) return; const code=crypto.randomUUID().replaceAll('-','').slice(0,12); try { await setDoc(doc(firestore,'households',householdId,'invites',code),{email,active:true,createdBy:currentUser.uid,createdAt:serverTimestamp()}); document.getElementById('inviteResult').textContent=` Koodi ${code} · kalenterin tunnus ${householdId}`; } catch(error) { authError(error); } });
     let persistQueue=Promise.resolve();
     window.firebasePersistCalendar = payload => { if(!remoteStateRef)return Promise.resolve(); const snapshot=JSON.parse(JSON.stringify(payload)); persistQueue=persistQueue.then(()=>setDoc(remoteStateRef,{payload:snapshot,updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||null},{merge:true})); return persistQueue; };
-    async function attachHousehold(id) { householdId=id; localStorage.setItem('firebase-household-id',id); remoteStateRef=doc(firestore,'households',id,'state','calendar'); const snap=await getDoc(remoteStateRef); if(snap.exists()&&snap.data().payload&&sessionStorage.getItem('firebase-calendar-loaded')!==id){ localStorage.setItem('koulukyytikalenteri-v1',JSON.stringify(snap.data().payload)); sessionStorage.setItem('firebase-calendar-loaded',id); location.reload(); return; } if(!snap.exists()) await window.firebasePersistCalendar(JSON.parse(localStorage.getItem('koulukyytikalenteri-v1')||'{}')); appPanel.hidden=false; document.getElementById('householdSetup').hidden=true; document.getElementById('inviteTools').hidden=false; authMessage(`Yhteinen kalenteri käytössä · tunnus ${id}`); }
+    async function attachHousehold(id) { householdId=id; localStorage.setItem('firebase-household-id',id); remoteStateRef=doc(firestore,'households',id,'state','calendar'); const snap=await getDoc(remoteStateRef); if(snap.exists()&&snap.data().payload&&sessionStorage.getItem('firebase-calendar-loaded')!==id){ localStorage.setItem('koulukyytikalenteri-v1',JSON.stringify(snap.data().payload)); sessionStorage.setItem('firebase-calendar-loaded',id); location.reload(); return; } if(!snap.exists()) await window.firebasePersistCalendar(JSON.parse(localStorage.getItem('koulukyytikalenteri-v1')||'{}')); if(stopSync)stopSync(); stopSync=onSnapshot(remoteStateRef,remote=>{ if(!remote.exists()||remote.metadata.hasPendingWrites)return; const payload=remote.data().payload; if(payload)window.applyFirebaseCalendar?.(payload); }); appPanel.hidden=false; document.getElementById('householdSetup').hidden=true; document.getElementById('inviteTools').hidden=false; authMessage(`Yhteinen kalenteri käytössä · tunnus ${id}`); }
     onAuthStateChanged(auth, async user => { currentUser=user; appPanel.hidden=true; document.getElementById('householdSetup').hidden=true; document.getElementById('inviteTools').hidden=true; document.getElementById('signOutButton').hidden=!user; if(!user){document.getElementById('authForm').hidden=false;document.getElementById('registerButton').hidden=false;document.getElementById('authTitle').textContent='Kirjaudu sisään';authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenterin tiedot tallennetaan Firebaseen ja jaetaan perheenjäsenten kesken.');return;} document.getElementById('authForm').hidden=true;document.getElementById('registerButton').hidden=true; document.getElementById('authTitle').textContent=user.email||'Käyttäjä'; if(!user.emailVerified){authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');return;} try { const remembered=localStorage.getItem('firebase-household-id'); if(remembered){ const membership=await getDoc(doc(firestore,'households',remembered,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(remembered);return;} } const membership=await getDoc(doc(firestore,'households',user.uid,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(user.uid);return;} document.getElementById('householdSetup').hidden=false;authMessage('Luo uusi yhteinen kalenteri tai liity perheeseen kutsukoodilla.'); } catch(error) { authError(error); } });
   </script>
   <script>
@@ -274,6 +274,17 @@
         return imported;
       }
       const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); queueCsvWrite(); window.firebasePersistCalendar?.(data).then(()=>status('Tallennettu yhteiseen Firebase-kalenteriin.')).catch(()=>status('Firebase-tallennus epäonnistui. Tarkista yhteys.')); };
+      window.applyFirebaseCalendar = payload => {
+        if(!payload||typeof payload!=='object'||JSON.stringify(payload)===JSON.stringify(data))return;
+        data={...payload};
+        if(!Array.isArray(data.people))data.people=[];
+        if(!Array.isArray(data.inactivePeople))data.inactivePeople=[];
+        if(!Array.isArray(data.payments))data.payments=[];
+        data.payments=normalizePayments(data.payments);
+        if(!data.trips||typeof data.trips!=='object')data.trips={};
+        data.tripPrices=normalizeTripPrices(Array.isArray(data.tripPrices)?data.tripPrices:[],data.tripPrice);
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render();status('Perheenjäsenen muutokset synkronoitu.');
+      };
       async function writeCsv(){if(!csvHandle)return;try{let p=await csvHandle.queryPermission({mode:'readwrite'});if(p!=='granted')p=await csvHandle.requestPermission({mode:'readwrite'});if(p!=='granted'){status('CSV-tallennus odottaa lupaa.');return;}const w=await csvHandle.createWritable();await w.write(makeCsv());await w.close();status('Tallennettu CSV-tiedostoon.');}catch{status('CSV-tallennus ei onnistunut. Lataa varmuuskopio.');}}
       function queueCsvWrite(){if(!csvHandle)return;clearTimeout(writeTimer);status('Tallennetaan CSV-tiedostoon…');writeTimer=setTimeout(writeCsv,250);}
       function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.payments=imported.payments;data.tripPrices=imported.tripPrices;data.tripPrice=imported.tripPrice;data.trips=imported.trips;}
