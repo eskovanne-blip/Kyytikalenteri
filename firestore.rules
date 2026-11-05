@@ -57,9 +57,9 @@ service cloud.firestore {
       }
 
       match /invites/{inviteCode} {
-        allow get: if signedInVerified()
-          && resource.data.active == true
-          && resource.data.email == request.auth.token.email;
+        allow get: if resource.data.active == true
+          && (request.auth == null
+            || (signedInVerified() && resource.data.email == request.auth.token.email));
         allow list: if isAdmin(householdId);
         allow create: if isAdmin(householdId)
           && request.resource.data.email is string
