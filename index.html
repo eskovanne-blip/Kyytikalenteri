@@ -129,7 +129,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.18)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.19)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -201,7 +201,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.18'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.19'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
@@ -329,7 +329,7 @@
         });
         const sentAt = new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(new Date());
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid>0);
-        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)}€ ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina +${p.driverRides}`:''})`)];
+        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)}€ ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina +${p.driverRides}`:''}${p.carry>0?`, +${euro(p.carry)}€ Siirtyy`:''})`)];
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
         $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>S</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(Math.abs(p.paid))}€</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vaikuttaa saldoon maksusuunnan mukaan.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
