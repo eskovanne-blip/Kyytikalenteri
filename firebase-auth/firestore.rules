@@ -5,18 +5,22 @@ service cloud.firestore {
       return request.auth != null
         && request.auth.token.email_verified == true;
     }
+
     function memberPath(householdId, userId) {
       return /databases/$(database)/documents/households/$(householdId)/members/$(userId);
     }
+
     function isMember(householdId) {
       return signedInVerified()
         && exists(memberPath(householdId, request.auth.uid))
         && get(memberPath(householdId, request.auth.uid)).data.active == true;
     }
+
     function isAdmin(householdId) {
       return isMember(householdId)
         && get(memberPath(householdId, request.auth.uid)).data.role in ['owner', 'admin'];
     }
+
     match /households/{householdId} {
       allow create: if signedInVerified()
         && householdId == request.auth.uid
@@ -27,27 +31,31 @@ service cloud.firestore {
       allow update: if isAdmin(householdId)
         && request.resource.data.ownerUid == resource.data.ownerUid;
       allow delete: if false;
+
       match /members/{userId} {
         allow create: if signedInVerified()
           && userId == request.auth.uid
+          && householdId == request.auth.uid
           && request.resource.data.email == request.auth.token.email
+          && request.resource.data.role == 'owner'
           && request.resource.data.active == true
-          && (
-            (householdId == request.auth.uid && request.resource.data.role == 'owner')
-            ||
-            (request.resource.data.role == 'member'
-              && request.resource.data.inviteCode is string
-              && exists(/databases/$(database)/documents/households/$(householdId)/invites/$(request.resource.data.inviteCode))
-              && get(/databases/$(database)/documents/households/$(householdId)/invites/$(request.resource.data.inviteCode)).data.active == true
-              && get(/databases/$(database)/documents/households/$(householdId)/invites/$(request.resource.data.inviteCode)).data.email == request.auth.token.email)
-          );
-        allow get: if isMember(householdId)
-          && (userId == request.auth.uid || isAdmin(householdId));
+          || signedInVerified()
+          && userId == request.auth.uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.role == 'member'
+          && request.resource.data.active == true
+          && request.resource.data.inviteCode is string
+          && exists(/databases/$(database)/documents/households/$(householdId)/invites/$(request.resource.data.inviteCode))
+          && get(/databases/$(database)/documents/households/$(householdId)/invites/$(request.resource.data.inviteCode)).data.active == true
+          && get(/databases/$(database)/documents/households/$(householdId)/invites/$(request.resource.data.inviteCode)).data.email == request.auth.token.email;
+        allow get: if (signedInVerified() && userId == request.auth.uid)
+          || (isMember(householdId) && isAdmin(householdId));
         allow list: if isAdmin(householdId);
         allow update: if isAdmin(householdId)
           && request.resource.data.email == resource.data.email;
         allow delete: if isAdmin(householdId) && userId != request.auth.uid;
       }
+
       match /invites/{inviteCode} {
         allow get: if signedInVerified()
           && resource.data.active == true
@@ -58,16 +66,18 @@ service cloud.firestore {
           && request.resource.data.active == true
           && request.resource.data.createdBy == request.auth.uid;
         allow update: if isAdmin(householdId)
-          || (signedInVerified()
-            && resource.data.active == true
-            && resource.data.email == request.auth.token.email
-            && request.resource.data.usedBy == request.auth.uid
-            && request.resource.data.active == false);
+          || signedInVerified()
+          && resource.data.active == true
+          && resource.data.email == request.auth.token.email
+          && request.resource.data.usedBy == request.auth.uid
+          && request.resource.data.active == false;
         allow delete: if isAdmin(householdId);
       }
+
       match /state/{documentId} {
         allow read, write: if isMember(householdId);
       }
     }
   }
 }
+
