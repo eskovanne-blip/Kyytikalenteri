@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.0)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.1)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -178,11 +178,13 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['version','','','1.1.0']];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.1'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         data.people.forEach(name=>rows.push(['person','','',name]));
-        for(const date of Object.keys(data.trips).sort()) { const entry=data.trips[date]; for(const way of ['to','home'])
-          for(const i of (Array.isArray(entry[way])?entry[way]:[])) if(data.people[i]!==undefined) rows.push(['trip',date,way,data.people[i]]); }
-        for(const [date,entry] of Object.entries(data.trips)) if(Array.isArray(entry.notes)) for(const note of entry.notes) rows.push(['note',date,'',note]);
+        for(const date of Object.keys(data.trips).sort()) {
+          const entry=data.trips[date];
+          for(const way of ['to','home']) for(const i of (Array.isArray(entry[way])?entry[way]:[])) if(data.people[i]!==undefined) rows.push(['trip',date,way,data.people[i]]);
+          if(Array.isArray(entry.notes)) for(const note of entry.notes) rows.push(['note',date,'',note]);
+        }
         return '\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
       }
       function parseCsv(text) {
