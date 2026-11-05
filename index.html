@@ -130,7 +130,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.23)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.24)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -217,7 +217,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.23']];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.24']];
         for(const rate of normalizeTripPrices(data.tripPrices,data.tripPrice))rows.push(['parameter',rate.date,'tripPrice',Number(rate.price).toFixed(2)]);
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
@@ -365,14 +365,23 @@
         a.href=url;a.download=backupFilename();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
         status(`CSV-varmuuskopio ladattu: ${a.download}`);
       }
+      function downloadAndOpenWhatsapp() {
+        const filename=backupFilename();
+        const whatsappUrl=`whatsapp://send?text=${encodeURIComponent(`Lähetän ajantasaisen koulukyyttien CSV-tiedoston: ${filename}`)}`;
+        const appWindow=window.open(whatsappUrl,'_blank');
+        if(!appWindow)window.open('https://web.whatsapp.com/','_blank');
+        else setTimeout(()=>{if(!document.hidden)window.open('https://web.whatsapp.com/','_blank');},1800);
+        downloadBackup();
+        status(`CSV ${filename} ladattiin. Valitse vastaanottaja WhatsAppissa ja liitä tiedosto viestiin.`);
+      }
       async function shareCsvOnWhatsapp() {
         const file=new File([makeCsv()],backupFilename(),{type:'text/csv;charset=utf-8'});
         if(navigator.share&&navigator.canShare?.({files:[file]})) {
           try { await navigator.share({files:[file],title:'Koulukyydit CSV',text:'Koulukyyttien ajantasainen CSV-tiedosto'});status('CSV-tiedosto jaettu. Valitse WhatsApp ja vastaanottaja jakovalikosta.'); }
-          catch(error) { if(error.name==='AbortError')status('CSV-tiedoston jakaminen peruutettiin.');else {downloadBackup();status('CSV ladattiin. Tämä selain ei saanut avattua WhatsApp-jakoa; liitä tiedosto viestiin käsin.');} }
+          catch(error) { if(error.name==='AbortError')status('CSV-tiedoston jakaminen peruutettiin.');else downloadAndOpenWhatsapp(); }
           return;
         }
-        downloadBackup();status('CSV ladattiin, mutta selain ei tue tiedoston jakamista WhatsAppiin. Liitä ladattu tiedosto WhatsApp-viestiin käsin.');
+        downloadAndOpenWhatsapp();
       }
       function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
