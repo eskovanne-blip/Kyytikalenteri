@@ -131,7 +131,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(2.0.0-firebase.3)</span></h1><p class="subtitle">Firebase-versio · yhteinen perhekalenteri</p></div>
+      <div><h1>Koulukyydit <span class="version">(2.0.0-firebase.4)</span></h1><p class="subtitle">Firebase-versio · yhteinen perhekalenteri</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi perheen kalenteria</div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -180,7 +180,7 @@
     const auth = getAuth(firebaseApp), firestore = getFirestore(firebaseApp);
     let currentUser = null, householdId = null, remoteStateRef = null, stopSync = null;
     const authMessage = text => { document.getElementById('authMessage').textContent = text; };
-    const authError = error => { const messages={'auth/invalid-email':'Sähköpostiosoite ei ole kelvollinen. Tarkista osoite ja yritä uudelleen.','auth/email-already-in-use':'Tälle sähköpostiosoitteelle on jo käyttäjätili. Kirjaudu sisään.','auth/weak-password':'Salasana on liian heikko. Käytä vähintään 8 merkkiä.','auth/operation-not-allowed':'Sähköposti- ja salasanakirjautuminen ei ole käytössä Firebase-projektissa.','auth/too-many-requests':'Liian monta yritystä. Odota hetki ja yritä uudelleen.','auth/network-request-failed':'Yhteys Firebaseen epäonnistui. Tarkista verkkoyhteys.'}; authMessage(messages[error?.code] || 'Toiminto ei onnistunut. Tarkista tiedot ja yritä uudelleen.'); };
+    const authError = error => { const messages={'auth/invalid-email':'Sähköpostiosoite ei ole kelvollinen. Tarkista osoite ja yritä uudelleen.','auth/email-already-in-use':'Tälle sähköpostiosoitteelle on jo käyttäjätili. Kirjaudu sisään.','auth/weak-password':'Salasana on liian heikko. Käytä vähintään 8 merkkiä.','auth/operation-not-allowed':'Sähköposti- ja salasanakirjautuminen ei ole käytössä Firebase-projektissa.','auth/too-many-requests':'Liian monta yritystä. Odota hetki ja yritä uudelleen.','auth/network-request-failed':'Yhteys Firebaseen epäonnistui. Tarkista verkkoyhteys.','permission-denied':'Firestore esti pyynnön käyttöoikeussäännön perusteella. Kirjaudu uudelleen tai pyydä kalenterin omistajaa tarkistamaan jäsenyys.'}; authMessage(messages[error?.code] || `Toiminto ei onnistunut (${error?.code||'tuntematon virhe'}). Tarkista tiedot ja yritä uudelleen.`); };
     const appPanel = document.getElementById('calendarApp');
     document.getElementById('authForm').addEventListener('submit', async event => { event.preventDefault(); try { await signInWithEmailAndPassword(auth, document.getElementById('authEmail').value.trim(), document.getElementById('authPassword').value); } catch(error) { authError(error); } });
     document.getElementById('registerButton').addEventListener('click', async () => { const emailInput=document.getElementById('authEmail'),passwordInput=document.getElementById('authPassword'); emailInput.value=emailInput.value.trim(); if(!emailInput.reportValidity())return; if(passwordInput.value.length<8){authMessage('Anna salasana, jossa on vähintään 8 merkkiä.');passwordInput.focus();return;} try { const credential = await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value); await sendEmailVerification(credential.user); await signOut(auth); authMessage('Vahvistusviesti lähetettiin sähköpostiisi. Vahvista osoite ja kirjaudu sen jälkeen sisään.'); } catch(error) { authError(error); } });
