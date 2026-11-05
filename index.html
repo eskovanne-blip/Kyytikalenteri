@@ -59,8 +59,9 @@
     .csv-menu { position:relative; margin-top:14px }
     .csv-menu summary { display:block; list-style:none; width:100%; text-align:center; font-weight:650 }
     .csv-menu summary::-webkit-details-marker { display:none }
-    .csv-menu-items { display:grid; gap:7px; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:#fff }
-    .csv-menu-items button { width:100%; text-align:left }
+    .csv-menu-items { display:grid; gap:2px; margin-top:8px; padding:6px; border:1px solid var(--line); border-radius:10px; background:#fff; box-shadow:0 6px 18px #17362912 }
+    .csv-menu-item { width:100%; border:0; border-radius:7px; padding:9px 10px; background:transparent; color:var(--ink); text-align:left }
+    .csv-menu-item:hover,.csv-menu-item:focus-visible { border:0; background:#f0f5f1; outline:none }
     input:focus { border-color:var(--green) }
     .primary { background:var(--green); color:#fff; border-color:var(--green); font-weight:650; padding:9px 13px }
     .primary:hover { background:#1c5943; border-color:#1c5943 }
@@ -126,7 +127,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.2)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.3)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -149,7 +150,7 @@
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
           <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p><label for="csvPath">Uuden CSV-tiedoston nimi</label><input id="csvPath" type="text" placeholder="esim. koulukyydit.csv" autocomplete="off"></div>
-          <details class="csv-menu" id="csvMenu"><summary class="secondary">CSV toiminnot</summary><div class="csv-menu-items"><button class="secondary" id="selectCsv" type="button">Valitse CSV</button><button class="secondary" id="openCsv" type="button">Luo uusi CSV</button><button class="secondary" id="downloadCsv" type="button">Tee varmuuskopio</button><button class="secondary" id="updateCsv" type="button">Talleta muutokset CSV tiedostoon</button></div></details>
+          <details class="csv-menu" id="csvMenu"><summary class="secondary">CSV toiminnot</summary><div class="csv-menu-items" role="menu"><button class="csv-menu-item" id="selectCsv" type="button" role="menuitem">Valitse CSV</button><button class="csv-menu-item" id="openCsv" type="button" role="menuitem">Luo uusi CSV</button><button class="csv-menu-item" id="downloadCsv" type="button" role="menuitem">Tee varmuuskopio</button><button class="csv-menu-item" id="updateCsv" type="button" role="menuitem">Talleta muutokset CSV tiedostoon</button></div></details>
         </section>
       </aside>
     </div>
@@ -184,7 +185,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.2'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.3'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         data.people.forEach(name=>rows.push(['person','','',name]));
         for(const date of Object.keys(data.trips).sort()) {
           const entry=data.trips[date];
@@ -274,7 +275,8 @@
         const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
         const original=($('csvPath').value.trim().split(/[\\/]/).pop()||'koulukyydit.csv').replace(/[^\w.\- äöåÄÖÅ]/g,'_');
         const stem=original.replace(/\.csv$/i,'')||'koulukyydit';
-        return `${year}_${month}_${stem}.csv`;
+        const day=String(now.getDate()).padStart(2,'0');
+        return `${year}_${month}_${day}_${stem}.csv`;
       }
       function downloadBackup() {
         const blob=new Blob([makeCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -327,7 +329,7 @@
       $('csvPath').value=localStorage.getItem(CSV_NAME_KEY)||'';
       $('csvPath').addEventListener('input',()=>localStorage.setItem(CSV_NAME_KEY,$('csvPath').value));
       $('updateCsv').addEventListener('click',async()=>{if(!csvHandle){status('Valitse ensin olemassa oleva tai luo uusi CSV-tiedosto.');return;}await writeCsv();});
-      $('downloadCsv').addEventListener('click',()=>{const blob=new Blob([makeCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='koulukyydit.csv';a.click();URL.revokeObjectURL(url);status('CSV-varmuuskopio ladattu.');});
+      $('downloadCsv').addEventListener('click',downloadBackup);
       $('monthReport').addEventListener('click',e=>{
         const link=e.target.closest('.whatsapp-link');if(!link)return;
         if(window.confirm('Tehdäänkö samalla CSV-varmuuskopio?'))downloadBackup();
