@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f7f5">
   <title>Koulukyydit – kalenteri</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <style>
     :root { color-scheme: light; --ink:#202b28; --muted:#697570; --line:#e1e7e3; --green:#236b52; --pale:#e8f3ed; --paper:#fff; --bg:#f5f7f5; --orange:#c87535; }
     * { box-sizing:border-box }
@@ -129,7 +130,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.19)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.20)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -201,7 +202,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.19'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.20'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
