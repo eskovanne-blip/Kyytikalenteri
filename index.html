@@ -129,7 +129,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.15)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.16)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -201,7 +201,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.15'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.16'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
@@ -244,9 +244,23 @@
       function monthlyPaid(personName, month) {
         return data.payments.filter(payment=>payment.person===personName&&payment.month===month).reduce((sum,payment)=>sum+Number(payment.amount||0),0);
       }
-      function previousMonth() {
-        const date=new Date();date.setDate(1);date.setMonth(date.getMonth()-1);
+      function previousMonth(month) {
+        const date=month?new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1,1):new Date();
+        date.setDate(1);date.setMonth(date.getMonth()-1);
         return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+      }
+      function nextMonth(month) {
+        const date=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1);
+        return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+      }
+      function positiveCarryForward(personIndex, month) {
+        const months=[...Object.keys(data.trips).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)).map(date=>date.slice(0,7)),...data.payments.map(payment=>payment.month)].filter(value=>/^\d{4}-\d{2}$/.test(value)).sort();
+        if(!months.length)return 0;
+        const end=previousMonth(month),start=months[0];
+        if(start>end)return 0;
+        let balance=0,current=start;
+        while(current<=end){balance=Math.max(0,balance+monthlyBalance(personIndex,current)+monthlyPaid(data.people[personIndex],current));current=nextMonth(current);}
+        return balance;
       }
       function availablePaymentMonths() {
         return [...new Set([previousMonth(),...Object.keys(data.trips).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)).map(date=>date.slice(0,7)),...data.payments.map(payment=>payment.month)])].sort().reverse();
@@ -310,14 +324,14 @@
             if(Array.isArray(entry.to)&&entry.to.includes(i))to++;
             if(Array.isArray(entry.home)&&entry.home.includes(i))home++;
           }
-          const paid=monthlyPaid(name,selectedMonth);
-          return {name,to,home,driverRides,total:(driverRides-to-home)*Number(data.tripPrice)+paid,paid};
+          const paid=monthlyPaid(name,selectedMonth),carry=positiveCarryForward(i,selectedMonth);
+          return {name,to,home,driverRides,total:carry+(driverRides-to-home)*Number(data.tripPrice)+paid,paid,carry};
         });
         const sentAt = new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(new Date());
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid>0);
-        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)} € ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina +${p.driverRides}`:''})`)];
+        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)}€ ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina +${p.driverRides}`:''})`)];
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(p.paid)} €</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vähentää negatiivista saldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>S</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(p.paid)}€</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vähentää negatiivista saldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
       function backupFilename() {
         const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
@@ -350,11 +364,11 @@
         const months=availablePaymentMonths(),monthSelect=$('paymentMonth');
         monthSelect.innerHTML=months.map(month=>{const [year,number]=month.split('-');const label=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(Number(year),Number(number)-1,1));return `<option value="${month}">${safe(label)}</option>`;}).join('');
         monthSelect.value=previousMonth();$('paymentMonthGroup').hidden=false;$('paymentAmountGroup').hidden=false;
-        $('paymentAmount').value=Math.max(0,-(monthlyBalance(personIndex,monthSelect.value)+monthlyPaid(e.target.value,monthSelect.value))).toFixed(2);
+        $('paymentAmount').value=Math.max(0,-(positiveCarryForward(personIndex,monthSelect.value)+monthlyBalance(personIndex,monthSelect.value)+monthlyPaid(e.target.value,monthSelect.value))).toFixed(2);
       });
       $('paymentMonth').addEventListener('change',e=>{
         const personIndex=data.people.indexOf($('paymentPerson').value);if(personIndex<0)return;
-        $('paymentAmount').value=Math.max(0,-(monthlyBalance(personIndex,e.target.value)+monthlyPaid($('paymentPerson').value,e.target.value))).toFixed(2);
+        $('paymentAmount').value=Math.max(0,-(positiveCarryForward(personIndex,e.target.value)+monthlyBalance(personIndex,e.target.value)+monthlyPaid($('paymentPerson').value,e.target.value))).toFixed(2);
       });
       $('savePayment').addEventListener('click',()=>{
         const person=$('paymentPerson').value,month=$('paymentMonth').value,amount=Number($('paymentAmount').value);
