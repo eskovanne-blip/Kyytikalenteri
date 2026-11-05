@@ -129,7 +129,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.17)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.18)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -149,7 +149,7 @@
         <section class="card panel">
           <h2>Parametrit</h2><p class="hint">Henkilön poistaminen piilottaa nimen uusista kirjauksista ja säilyttää aiemmat merkinnät.</p>
           <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
-          <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Suoritetut maksut</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Maksun suorittaja</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi johon suoritus kohdistuu</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><div class="payment-actions"><button class="primary" id="savePayment" type="button">Tallenna saldo</button><button class="secondary" id="cancelPayment" type="button">Peruuta</button><button class="secondary remove-payment" id="removePayment" type="button" hidden>Poista maksu</button></div></div></div></div>
+          <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Suoritetut maksut</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Maksun suorittaja</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi johon suoritus kohdistuu</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><div class="payment-actions"><button class="primary" id="savePayment" type="button">Tallenna saldo</button><button class="secondary" id="cancelPayment" type="button">Peruuta</button><button class="secondary remove-payment" id="removePayment" type="button" hidden>Poista</button><button class="secondary" id="payPayment" type="button">Maksa</button></div></div></div></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
           <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p></div>
@@ -201,7 +201,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.17'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.18'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
@@ -331,7 +331,7 @@
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid>0);
         const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)}€ ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina +${p.driverRides}`:''})`)];
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>S</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(p.paid)}€</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vähentää negatiivista saldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>S</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(Math.abs(p.paid))}€</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vaikuttaa saldoon maksusuunnan mukaan.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
       function backupFilename() {
         const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
@@ -372,15 +372,18 @@
         $('paymentAmount').value=Math.max(0,-(positiveCarryForward(personIndex,e.target.value)+monthlyBalance(personIndex,e.target.value)+monthlyPaid($('paymentPerson').value,e.target.value))).toFixed(2);
         $('removePayment').hidden=!data.payments.some(payment=>payment.person===$('paymentPerson').value&&payment.month===e.target.value);
       });
-      $('savePayment').addEventListener('click',()=>{
+      function savePaymentAdjustment(direction) {
         const person=$('paymentPerson').value,month=$('paymentMonth').value,amount=Number($('paymentAmount').value);
         if(!person||!/^\d{4}-\d{2}$/.test(month)||!Number.isFinite(amount)||amount<0){status('Tarkista maksun henkilö, kuukausi ja summa.');return;}
-        const payment={person,month,amount:Math.round(amount*100)/100},existingIndex=data.payments.findIndex(item=>item.person===person&&item.month===month);
+        const payment={person,month,amount:direction*Math.round(amount*100)/100},existingIndex=data.payments.findIndex(item=>item.person===person&&item.month===month);
         if(existingIndex>=0)data.payments[existingIndex]=payment;else data.payments.push(payment);
         data.payments=normalizePayments(data.payments);save();renderReport();$('paymentPanel').hidden=true;$('paymentsButton').setAttribute('aria-expanded','false');
-        if(!csvHandle)status('Saldo tallennettu selaimeen. Valitse CSV, jotta se tallentuu tiedostoon.');
-        else status('Saldo tallennettu.');
-      });
+        const message=direction<0?'Maksu kirjattu ja saldoa vähennetty.':'Saldo tallennettu.';
+        if(!csvHandle)status(`${message} Valitse CSV, jotta se tallentuu tiedostoon.`);
+        else status(message);
+      }
+      $('savePayment').addEventListener('click',()=>savePaymentAdjustment(1));
+      $('payPayment').addEventListener('click',()=>savePaymentAdjustment(-1));
       $('cancelPayment').addEventListener('click',()=>{
         $('paymentPanel').hidden=true;$('paymentMonthGroup').hidden=true;$('paymentAmountGroup').hidden=true;$('paymentPerson').value='';$('paymentsButton').setAttribute('aria-expanded','false');
       });
