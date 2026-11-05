@@ -59,11 +59,11 @@
     input:focus { border-color:var(--green) }
     .primary { background:var(--green); color:#fff; border-color:var(--green); font-weight:650; padding:9px 13px }
     .primary:hover { background:#1c5943; border-color:#1c5943 }
-    .people { display:grid; gap:7px; margin-top:13px }
-    .person { display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:14px }
+    .people { display:flex; flex-wrap:wrap; gap:6px; margin-top:13px }
+    .person { display:inline-flex; align-items:center; gap:5px; border:0; border-radius:6px; padding:3px 7px; background:var(--green); color:#fff; font-size:11px; font-weight:700 }
     .person-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-    .remove { border:0; background:transparent; color:#8b9690; font-size:18px; padding:0 3px; line-height:1 }
-    .remove:hover { color:#a5463a }
+    .remove { border:0; background:transparent; color:#fff; font-size:15px; padding:0 1px; line-height:1; opacity:.8 }
+    .remove:hover { color:#fff; opacity:1 }
     .empty { text-align:center; color:var(--muted); font-size:13px; padding:13px 5px }
     .detail { padding:20px }
     .detail h2 { margin:0; font-size:20px; text-transform:capitalize }
@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.7)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.8)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -180,7 +180,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.7'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.8'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
           const entry=data.trips[date];
