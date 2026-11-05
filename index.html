@@ -121,7 +121,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.6)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.7)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -139,7 +139,7 @@
         <section class="card detail" id="detail"></section>
         <section class="card month-report" id="monthReport"></section>
         <section class="card panel">
-          <h2>Parametrit</h2><p class="hint">Henkilölista ja CSV-tallennuksen asetukset.</p>
+          <h2>Parametrit</h2><p class="hint">Henkilön poistaminen piilottaa nimen uusista kirjauksista ja säilyttää aiemmat merkinnät.</p>
           <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
@@ -167,6 +167,7 @@
       let data;
       try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { data = {}; }
       if (!Array.isArray(data.people)) data.people=[];
+      if (!Array.isArray(data.inactivePeople)) data.inactivePeople=[];
       if (!data.trips || typeof data.trips !== 'object') data.trips={};
       if (!Number.isFinite(Number(data.tripPrice)) || Number(data.tripPrice)<0) data.tripPrice=1;
       if (!Array.isArray(data.people)) data.people = [];
@@ -179,8 +180,8 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.6'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
-        data.people.forEach(name=>rows.push(['person','','',name]));
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.7'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
           const entry=data.trips[date];
           for(const way of ['to','home']) for(const i of (Array.isArray(entry[way])?entry[way]:[])) if(data.people[i]!==undefined) rows.push(['trip',date,way,data.people[i]]);
@@ -193,16 +194,17 @@
         for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell='';}else cell+=c;}
         if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}
         if(!rows.length||rows[0].map(v=>v.replace(/^\uFEFF/,'').trim()).join(',')!=='type,date,direction,person')throw new Error('CSV-tiedoston otsakerivi ei ole kelvollinen.');
-        const imported={people:[],trips:{}};
-        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
+        const imported={people:[],inactivePeople:[],trips:{}};
+        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
         return imported;
       }
       const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); queueCsvWrite(); };
       async function writeCsv(){if(!csvHandle)return;try{let p=await csvHandle.queryPermission({mode:'readwrite'});if(p!=='granted')p=await csvHandle.requestPermission({mode:'readwrite'});if(p!=='granted'){status('CSV-tallennus odottaa lupaa.');return;}const w=await csvHandle.createWritable();await w.write(makeCsv());await w.close();status('Tallennettu CSV-tiedostoon.');}catch{status('CSV-tallennus ei onnistunut. Lataa varmuuskopio.');}}
       function queueCsvWrite(){if(!csvHandle)return;clearTimeout(writeTimer);status('Tallennetaan CSV-tiedostoon…');writeTimer=setTimeout(writeCsv,250);}
-      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.trips=imported.trips;}
+      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.trips=imported.trips;}
       const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
+      const activePeople = () => data.people.map((name,index)=>({name,index})).filter(person=>!data.inactivePeople.includes(person.name));
       const driverDirection = note => note.endsWith(' ajoi aamulla')?'morning':note.endsWith(' ajoi illalla')?'evening':null;
       const driverName = note => driverDirection(note)?note.slice(0,-12).trim():null;
       const trip = (date, way) => {
@@ -211,7 +213,8 @@
         return data.trips[date][way];
       };
       function renderPeople() {
-        $('people').innerHTML = data.people.length ? data.people.map((name,i) => `<div class="person"><span class="person-name">${safe(name)}</span><button class="remove" data-remove="${i}" aria-label="Poista ${safe(name)}" title="Poista henkilö">×</button></div>`).join('') : '<div class="empty">Lisää ensimmäinen henkilö yllä.</div>';
+        const people=activePeople();
+        $('people').innerHTML = people.length ? people.map(({name,index}) => `<div class="person"><span class="person-name">${safe(name)}</span><button class="remove" data-remove="${index}" aria-label="Poista ${safe(name)} uusien kirjausten valinnoista" title="Poista uusien kirjausten valinnoista">×</button></div>`).join('') : '<div class="empty">Lisää ensimmäinen henkilö yllä.</div>';
       }
       function renderCalendar() {
         $('monthLabel').textContent = new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(cursor);
@@ -231,15 +234,18 @@
       }
       function directionMarkup(date, way, title, note, cls, extra='') {
         const chosen = trip(date,way);
-        return `<div class="direction ${cls}"><h3><i class="dot"></i>${title}</h3><p>${note}</p>${extra}${data.people.length?`<div class="checklist">${data.people.map((name,i)=>`<label class="check"><input type="checkbox" data-way="${way}" data-person="${i}" ${chosen.includes(i)?'checked':''}><span>${safe(name)}</span></label>`).join('')}</div>`:'<div class="no-people">Lisää ensin henkilöt Henkilöt-kohdasta.</div>'}</div>`;
+        const available=activePeople();
+        const archivedSelected=chosen.filter(index=>data.inactivePeople.includes(data.people[index])).map(index=>({name:data.people[index],index,archived:true}));
+        const visible=[...available.map(person=>({...person,archived:false})),...archivedSelected];
+        return `<div class="direction ${cls}"><h3><i class="dot"></i>${title}</h3><p>${note}</p>${extra}${visible.length?`<div class="checklist">${visible.map(({name,index,archived})=>`<label class="check"><input type="checkbox" data-way="${way}" data-person="${index}" ${chosen.includes(index)?'checked':''} ${archived?'disabled':''}><span>${safe(name)}</span></label>`).join('')}</div>`:'<div class="no-people">Lisää ensin henkilöt Henkilöt-kohdasta.</div>'}</div>`;
       }
       function renderDetail() {
         const date = new Date(`${selected}T12:00:00`);
         const dayLabel = new Intl.DateTimeFormat('fi-FI',{weekday:'long',day:'numeric',month:'numeric',year:'numeric'}).format(date);
         const dayNotes = data.trips[selected]?.notes||[];
         const noteOptions = ['Toisen kyydissä','Oma kyyti','Poissa koulusta/ei kuljettu','Loma'];
-        const morningControls=`<div class="note-controls"><select id="dayNoteSelect" aria-label="Aamun merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
-        const eveningControls=`<div class="note-controls"><select id="eveningNoteSelect" aria-label="Illan merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${data.people.map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const morningControls=`<div class="note-controls"><select id="dayNoteSelect" aria-label="Aamun merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const eveningControls=`<div class="note-controls"><select id="eveningNoteSelect" aria-label="Illan merkintä"><option value="" selected disabled>Valitse merkintä</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
         $('detail').innerHTML = `<div class="detail-head"><div><h2>${safe(dayLabel)}</h2><button class="today-link" id="goToday">Siirry tähän päivään</button></div><div class="day-actions"><button class="day-action add-all" id="addAll" type="button" aria-label="Lisää kaikki henkilöt tälle päivälle">+ KAIKKI</button><button class="day-action remove-all" id="removeAll" type="button" aria-label="Poista kaikki henkilöt tältä päivältä">- KAIKKI</button></div></div>${dayNotes.length?`<div class="day-notes">${dayNotes.map(note=>`<span class="day-note-chip ${driverDirection(note)?`driver-${driverDirection(note)}`:''}">${safe(note)}<button class="note-remove" data-remove-note="${safe(note)}" type="button" aria-label="Poista merkintä ${safe(note)}">×</button></span>`).join('')}</div>`:''}${directionMarkup(selected,'to','Kotoa kouluun','Keitä matkusti samalla autolla?','school',morningControls)}${directionMarkup(selected,'home','Koulusta kotiin','Keitä matkusti samalla autolla?','home',eveningControls)}`;
       }
       function renderReport() {
@@ -281,11 +287,11 @@
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
       $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
       $('days').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;const d=new Date(`${selected}T12:00:00`);cursor=new Date(d.getFullYear(),d.getMonth(),1);render();setTimeout(()=>$('detail').querySelector('[data-way="to"]')?.focus(),0)});
-      $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;if(data.people.some(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'))){input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
+      $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;const existingIndex=data.people.findIndex(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'));if(existingIndex>=0){const existingName=data.people[existingIndex];if(data.inactivePeople.includes(existingName)){data.inactivePeople=data.inactivePeople.filter(p=>p!==existingName);input.setCustomValidity('');input.value='';save();render();return;}input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
       $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
       $('tripPrice').value=Number(data.tripPrice).toFixed(2);
       $('tripPrice').addEventListener('change',e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0){data.tripPrice=Math.round(value*100)/100;save();renderReport();e.target.value=data.tripPrice.toFixed(2);}});
-      $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const i=Number(b.dataset.remove);data.people.splice(i,1);for(const entry of Object.values(data.trips)){for(const way of ['to','home'])if(Array.isArray(entry[way]))entry[way]=entry[way].filter(n=>n!==i).map(n=>n>i?n-1:n);}save();render()});
+      $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const name=data.people[Number(b.dataset.remove)];if(name&&!data.inactivePeople.includes(name))data.inactivePeople.push(name);save();render()});
       $('detail').addEventListener('change',e=>{
         const addNote=note=>{if(!data.trips[selected])data.trips[selected]={to:[],home:[]};const notes=Array.isArray(data.trips[selected].notes)?data.trips[selected].notes:[];if(!notes.includes(note))data.trips[selected].notes=[...notes,note];save();render();};
         if(e.target.id==='dayNoteSelect'||e.target.id==='eveningNoteSelect'){
@@ -301,7 +307,7 @@
         }
         const c=e.target.closest('[data-way]');if(!c)return;const arr=trip(selected,c.dataset.way),i=Number(c.dataset.person);if(c.checked&&!arr.includes(i))arr.push(i);if(!c.checked)data.trips[selected][c.dataset.way]=arr.filter(n=>n!==i);save();renderCalendar();renderDetail();
       });
-      $('detail').addEventListener('click',e=>{if(e.target.closest('#goToday')){selected=iso(today);cursor=new Date(today.getFullYear(),today.getMonth(),1);render();return;}if(e.target.closest('#addAll')){const everyone=data.people.map((_,i)=>i);data.trips[selected]={...data.trips[selected],to:[...everyone],home:[...everyone]};save();render();return;}if(e.target.closest('#removeAll')){data.trips[selected]={...data.trips[selected],to:[],home:[]};save();render();return;}const removeNote=e.target.closest('[data-remove-note]');if(removeNote){data.trips[selected].notes=(data.trips[selected].notes||[]).filter(note=>note!==removeNote.dataset.removeNote);save();render();}});
+      $('detail').addEventListener('click',e=>{if(e.target.closest('#goToday')){selected=iso(today);cursor=new Date(today.getFullYear(),today.getMonth(),1);render();return;}if(e.target.closest('#addAll')){const everyone=activePeople().map(({index})=>index);data.trips[selected]={...data.trips[selected],to:[...everyone],home:[...everyone]};save();render();return;}if(e.target.closest('#removeAll')){data.trips[selected]={...data.trips[selected],to:[],home:[]};save();render();return;}const removeNote=e.target.closest('[data-remove-note]');if(removeNote){data.trips[selected].notes=(data.trips[selected].notes||[]).filter(note=>note!==removeNote.dataset.removeNote);save();render();}});
       $('openCsv').addEventListener('click',async()=>{
         try{
           if(!window.showSaveFilePicker){status('Tämä selain ei tue suoraa CSV-tallennusta. Lataa CSV-varmuuskopio.');return;}
