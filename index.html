@@ -130,7 +130,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.21)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.22)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -186,7 +186,7 @@
         const latest=new Map();
         for(const item of prices)if(item&&/^\d{4}-\d{2}-\d{2}$/.test(item.date)&&Number.isFinite(Number(item.price))&&Number(item.price)>=0){latest.delete(item.date);latest.set(item.date,{date:item.date,price:Number(item.price)});}
         const normalized=[...latest.values()].sort((a,b)=>a.date.localeCompare(b.date));
-        if(!normalized.some(item=>item.date==='0001-01-01'))normalized.unshift({date:'0001-01-01',price:normalized.length?normalized[0].price:Number.isFinite(Number(fallbackPrice))?Number(fallbackPrice):1});
+        if(!normalized.some(item=>item.date==='0001-01-01'))normalized.unshift({date:'0001-01-01',price:Number.isFinite(Number(fallbackPrice))&&Number(fallbackPrice)>=0?Number(fallbackPrice):1});
         return normalized;
       }
       function priceFromHistory(prices, date, fallbackPrice=1) {
@@ -217,7 +217,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.21']];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.22']];
         for(const rate of normalizeTripPrices(data.tripPrices,data.tripPrice))rows.push(['parameter',rate.date,'tripPrice',Number(rate.price).toFixed(2)]);
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
