@@ -127,7 +127,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.3)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.4)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -149,7 +149,7 @@
           <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
-          <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p><label for="csvPath">Uuden CSV-tiedoston nimi</label><input id="csvPath" type="text" placeholder="esim. koulukyydit.csv" autocomplete="off"></div>
+          <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p></div>
           <details class="csv-menu" id="csvMenu"><summary class="secondary">CSV toiminnot</summary><div class="csv-menu-items" role="menu"><button class="csv-menu-item" id="selectCsv" type="button" role="menuitem">Valitse CSV</button><button class="csv-menu-item" id="openCsv" type="button" role="menuitem">Luo uusi CSV</button><button class="csv-menu-item" id="downloadCsv" type="button" role="menuitem">Tee varmuuskopio</button><button class="csv-menu-item" id="updateCsv" type="button" role="menuitem">Talleta muutokset CSV tiedostoon</button></div></details>
         </section>
       </aside>
@@ -159,7 +159,6 @@
   <script>
     (() => {
       const STORAGE_KEY = 'koulukyytikalenteri-v1';
-      const CSV_NAME_KEY = 'koulukyytien-csv-nimi-v1';
       function normalizeNote(note) {
         if(note==='Poissa')return 'Poissa koulusta/ei kuljettu';
         if(note==='Sampan kyydissä')return 'Samppa ajoi aamulla';
@@ -185,7 +184,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.3'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.4'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         data.people.forEach(name=>rows.push(['person','','',name]));
         for(const date of Object.keys(data.trips).sort()) {
           const entry=data.trips[date];
@@ -273,7 +272,7 @@
       }
       function backupFilename() {
         const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
-        const original=($('csvPath').value.trim().split(/[\\/]/).pop()||'koulukyydit.csv').replace(/[^\w.\- äöåÄÖÅ]/g,'_');
+        const original=(csvHandle?.name||'koulukyydit.csv').split(/[\\/]/).pop().replace(/[^\w.\- äöåÄÖÅ]/g,'_');
         const stem=original.replace(/\.csv$/i,'')||'koulukyydit';
         const day=String(now.getDate()).padStart(2,'0');
         return `${year}_${month}_${day}_${stem}.csv`;
@@ -311,9 +310,8 @@
       $('openCsv').addEventListener('click',async()=>{
         try{
           if(!window.showSaveFilePicker){status('Tämä selain ei tue suoraa CSV-tallennusta. Lataa CSV-varmuuskopio.');return;}
-          const requestedName=$('csvPath').value.trim().split(/[\\/]/).pop()||'koulukyydit.csv';
-          const handle=await window.showSaveFilePicker({suggestedName:requestedName,types:[{description:'CSV-tiedosto',accept:{'text/csv':['.csv']}}]});
-          csvHandle=handle;$('csvPath').value=handle.name;$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;localStorage.setItem(CSV_NAME_KEY,handle.name);await storeCsvHandle(handle);let permission=await handle.queryPermission({mode:'readwrite'});if(permission!=='granted')permission=await handle.requestPermission({mode:'readwrite'});const file=await handle.getFile();if(file.size)mergeCsv(await file.text());save();render();if(permission==='granted')await writeCsv();else status('CSV luettu. Tallennuslupa tarvitaan muutosten automaattitallennukseen.');
+          const handle=await window.showSaveFilePicker({suggestedName:'koulukyydit.csv',types:[{description:'CSV-tiedosto',accept:{'text/csv':['.csv']}}]});
+          csvHandle=handle;$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;await storeCsvHandle(handle);let permission=await handle.queryPermission({mode:'readwrite'});if(permission!=='granted')permission=await handle.requestPermission({mode:'readwrite'});const file=await handle.getFile();if(file.size)mergeCsv(await file.text());save();render();if(permission==='granted')await writeCsv();else status('CSV luettu. Tallennuslupa tarvitaan muutosten automaattitallennukseen.');
         }catch(error){if(error.name!=='AbortError')status('CSV-tiedoston avaaminen ei onnistunut.');}
       });
       $('selectCsv').addEventListener('click',async()=>{
@@ -322,12 +320,10 @@
           const [handle]=await window.showOpenFilePicker({multiple:false,types:[{description:'CSV-tiedosto',accept:{'text/csv':['.csv']}}]});
           const file=await handle.getFile(), text=await file.text();
           if(file.size)parseCsv(text);
-          csvHandle=handle;mergeCsv(text);$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;$('csvPath').value=handle.name;localStorage.setItem(CSV_NAME_KEY,handle.name);await storeCsvHandle(handle);
+          csvHandle=handle;mergeCsv(text);$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;await storeCsvHandle(handle);
           localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render();let permission=await handle.queryPermission({mode:'readwrite'});if(permission!=='granted')permission=await handle.requestPermission({mode:'readwrite'});if(permission==='granted')await writeCsv();else status('CSV luettu. Salli kirjoittaminen, jotta muutokset tallentuvat tähän tiedostoon.');
         }catch(error){if(error.name!=='AbortError')status('CSV-tiedoston valinta tai luku ei onnistunut.');}
       });
-      $('csvPath').value=localStorage.getItem(CSV_NAME_KEY)||'';
-      $('csvPath').addEventListener('input',()=>localStorage.setItem(CSV_NAME_KEY,$('csvPath').value));
       $('updateCsv').addEventListener('click',async()=>{if(!csvHandle){status('Valitse ensin olemassa oleva tai luo uusi CSV-tiedosto.');return;}await writeCsv();});
       $('downloadCsv').addEventListener('click',downloadBackup);
       $('monthReport').addEventListener('click',e=>{
@@ -335,7 +331,7 @@
         if(window.confirm('Tehdäänkö samalla CSV-varmuuskopio?'))downloadBackup();
       });
       async function storeCsvHandle(handle){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('handles','readwrite');tx.objectStore('handles').put(handle,'csv');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();}catch{}}
-      async function restoreCsvHandle(){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const handle=await new Promise((resolve,reject)=>{const r=db.transaction('handles','readonly').objectStore('handles').get('csv');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();if(!handle)return;csvHandle=handle;$('csvPath').value=handle.name;$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;localStorage.setItem(CSV_NAME_KEY,handle.name);status('Merkinnät ladattu selaimen välimuistista.');}catch{status('Merkinnät ladattu selaimen välimuistista.');}}
+      async function restoreCsvHandle(){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const handle=await new Promise((resolve,reject)=>{const r=db.transaction('handles','readonly').objectStore('handles').get('csv');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();if(!handle)return;csvHandle=handle;$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;status('Merkinnät ladattu selaimen välimuistista.');}catch{status('Merkinnät ladattu selaimen välimuistista.');}}
       render();
       restoreCsvHandle();
     })();
