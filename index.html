@@ -56,7 +56,8 @@
     .path-row + .add-row { margin-top:14px }
     .path-row label { font-size:13px; font-weight:650 }
     .path-row input { width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; outline:none }
-    .payments-button { width:100% }
+    .payments-button { width:100%; background:#5a78ff; border-color:#5a78ff; color:#fff; font-weight:700 }
+    .payments-button:hover { background:#4c67ed; border-color:#4c67ed }
     .payment-panel { display:grid; gap:7px; margin-top:8px }
     .payment-panel[hidden] { display:none }
     .payment-panel select,.payment-panel input { width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:#fff; color:var(--ink) }
@@ -126,7 +127,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.11)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.12)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -187,7 +188,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.11'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.12'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
         for(const payment of data.payments) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
