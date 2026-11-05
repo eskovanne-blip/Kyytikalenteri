@@ -130,7 +130,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.22)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.23)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -154,8 +154,8 @@
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
           <div class="path-row"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p></div>
-          <div class="note-controls"><select id="csvActions" aria-label="CSV toiminnot"><option value="" selected>CSV toiminnot</option><option value="selectCsv">Valitse CSV</option><option value="openCsv">Luo uusi CSV</option><option value="readCsv">Lue tapahtumat CSV tiedostosta</option><option value="downloadCsv">Tee varmuuskopio</option><option value="updateCsv">Talleta muutokset CSV tiedostoon</option></select></div>
-          <div hidden><button id="selectCsv" type="button"></button><button id="openCsv" type="button"></button><button id="readCsv" type="button"></button><button id="downloadCsv" type="button"></button><button id="updateCsv" type="button"></button></div>
+          <div class="note-controls"><select id="csvActions" aria-label="CSV toiminnot"><option value="" selected>CSV toiminnot</option><option value="selectCsv">Valitse CSV</option><option value="openCsv">Luo uusi CSV</option><option value="readCsv">Lue tapahtumat CSV tiedostosta</option><option value="downloadCsv">Tee varmuuskopio</option><option value="updateCsv">Talleta muutokset CSV tiedostoon</option><option value="shareCsv">Lähetä CSV tiedosto WhatsApp:illa</option></select></div>
+          <div hidden><button id="selectCsv" type="button"></button><button id="openCsv" type="button"></button><button id="readCsv" type="button"></button><button id="downloadCsv" type="button"></button><button id="updateCsv" type="button"></button><button id="shareCsv" type="button"></button></div>
         </section>
       </aside>
     </div>
@@ -217,7 +217,7 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.22']];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.23']];
         for(const rate of normalizeTripPrices(data.tripPrices,data.tripPrice))rows.push(['parameter',rate.date,'tripPrice',Number(rate.price).toFixed(2)]);
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
@@ -365,6 +365,15 @@
         a.href=url;a.download=backupFilename();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
         status(`CSV-varmuuskopio ladattu: ${a.download}`);
       }
+      async function shareCsvOnWhatsapp() {
+        const file=new File([makeCsv()],backupFilename(),{type:'text/csv;charset=utf-8'});
+        if(navigator.share&&navigator.canShare?.({files:[file]})) {
+          try { await navigator.share({files:[file],title:'Koulukyydit CSV',text:'Koulukyyttien ajantasainen CSV-tiedosto'});status('CSV-tiedosto jaettu. Valitse WhatsApp ja vastaanottaja jakovalikosta.'); }
+          catch(error) { if(error.name==='AbortError')status('CSV-tiedoston jakaminen peruutettiin.');else {downloadBackup();status('CSV ladattiin. Tämä selain ei saanut avattua WhatsApp-jakoa; liitä tiedosto viestiin käsin.');} }
+          return;
+        }
+        downloadBackup();status('CSV ladattiin, mutta selain ei tue tiedoston jakamista WhatsAppiin. Liitä ladattu tiedosto WhatsApp-viestiin käsin.');
+      }
       function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
       $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
@@ -471,6 +480,7 @@
       });
       $('updateCsv').addEventListener('click',async()=>{if(!csvHandle){status('Valitse ensin olemassa oleva tai luo uusi CSV-tiedosto.');return;}await writeCsv();});
       $('downloadCsv').addEventListener('click',downloadBackup);
+      $('shareCsv').addEventListener('click',shareCsvOnWhatsapp);
       $('csvActions').addEventListener('change',e=>{const action=e.target.value;e.target.value='';if(action)$(action).click();});
       $('monthReport').addEventListener('click',e=>{
         const link=e.target.closest('.whatsapp-link');if(!link)return;
