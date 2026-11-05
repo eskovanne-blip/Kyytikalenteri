@@ -127,7 +127,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.13)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.14)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -169,6 +169,16 @@
         if(note.endsWith(' ajoi'))return `${note.slice(0,-5)} ajoi aamulla`;
         return note;
       }
+      function normalizePayments(payments) {
+        const latest=new Map();
+        for(const payment of payments) {
+          if(!payment||typeof payment.person!=='string'||!/^\d{4}-\d{2}$/.test(payment.month)||!Number.isFinite(Number(payment.amount)))continue;
+          const key=`${payment.person}\u0000${payment.month}`;
+          latest.delete(key);
+          latest.set(key,{person:payment.person,month:payment.month,amount:Number(payment.amount)});
+        }
+        return [...latest.values()];
+      }
       const today = new Date(); today.setHours(0,0,0,0);
       const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       let data;
@@ -176,6 +186,7 @@
       if (!Array.isArray(data.people)) data.people=[];
       if (!Array.isArray(data.inactivePeople)) data.inactivePeople=[];
       if (!Array.isArray(data.payments)) data.payments=[];
+      data.payments=normalizePayments(data.payments);
       if (!data.trips || typeof data.trips !== 'object') data.trips={};
       if (!Number.isFinite(Number(data.tripPrice)) || Number(data.tripPrice)<0) data.tripPrice=1;
       if (!Array.isArray(data.people)) data.people = [];
@@ -188,8 +199,8 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.13'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
-        for(const payment of data.payments) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.14'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
           const entry=data.trips[date];
@@ -206,6 +217,7 @@
         const imported={people:[],inactivePeople:[],payments:[],trips:{}};
         for(const [type,,direction,person] of rows.slice(1))if(type==='person'&&person){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}
         for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='saldo'&&/^\d{4}-\d{2}$/.test(date)&&Number.isFinite(Number(direction))){if(!imported.people.includes(person))imported.people.push(person);imported.payments.push({person,month:date,amount:Number(direction)});}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
+        imported.payments=normalizePayments(imported.payments);
         return imported;
       }
       const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); queueCsvWrite(); };
@@ -300,7 +312,7 @@
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid>0);
         const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)} € ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina -${p.driverRides}`:''})`)];
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Yht.</th><th>Maksettu</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${euro(p.total)} €</td><td>${euro(p.paid)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides?-p.driverRides:''}</td><td>${euro(p.paid)} €</td><td>${euro(p.total)} €</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kuskina-merkinnät näkyvät miinuksina ja vähentävät kokonaissaldoa.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
       }
       function backupFilename() {
         const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
@@ -342,7 +354,9 @@
       $('savePayment').addEventListener('click',()=>{
         const person=$('paymentPerson').value,month=$('paymentMonth').value,amount=Number($('paymentAmount').value);
         if(!person||!/^\d{4}-\d{2}$/.test(month)||!Number.isFinite(amount)||amount<0){status('Tarkista maksun henkilö, kuukausi ja summa.');return;}
-        data.payments.push({person,month,amount:Math.round(amount*100)/100});save();$('paymentPanel').hidden=true;$('paymentsButton').setAttribute('aria-expanded','false');
+        const payment={person,month,amount:Math.round(amount*100)/100},existingIndex=data.payments.findIndex(item=>item.person===person&&item.month===month);
+        if(existingIndex>=0)data.payments[existingIndex]=payment;else data.payments.push(payment);
+        data.payments=normalizePayments(data.payments);save();renderReport();$('paymentPanel').hidden=true;$('paymentsButton').setAttribute('aria-expanded','false');
         if(!csvHandle)status('Saldo tallennettu selaimeen. Valitse CSV, jotta se tallentuu tiedostoon.');
         else status('Saldo tallennettu.');
       });
