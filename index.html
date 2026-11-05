@@ -130,7 +130,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(1.1.20)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
+      <div><h1>Koulukyydit <span class="version">(1.1.21)</span></h1><p class="subtitle">Valitse päivä ja merkitse ketkä kulkivat samalla kertaa mukana (huomioi suunnat)</p></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Tallennus tähän selaimeen käytössä</div></div>
     </header>
     <div class="layout">
@@ -182,6 +182,18 @@
         }
         return [...latest.values()];
       }
+      function normalizeTripPrices(prices, fallbackPrice) {
+        const latest=new Map();
+        for(const item of prices)if(item&&/^\d{4}-\d{2}-\d{2}$/.test(item.date)&&Number.isFinite(Number(item.price))&&Number(item.price)>=0){latest.delete(item.date);latest.set(item.date,{date:item.date,price:Number(item.price)});}
+        const normalized=[...latest.values()].sort((a,b)=>a.date.localeCompare(b.date));
+        if(!normalized.some(item=>item.date==='0001-01-01'))normalized.unshift({date:'0001-01-01',price:normalized.length?normalized[0].price:Number.isFinite(Number(fallbackPrice))?Number(fallbackPrice):1});
+        return normalized;
+      }
+      function priceFromHistory(prices, date, fallbackPrice=1) {
+        let price=fallbackPrice;
+        for(const item of prices){if(item.date>date)break;price=item.price;}
+        return price;
+      }
       const today = new Date(); today.setHours(0,0,0,0);
       const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       let data;
@@ -192,6 +204,9 @@
       data.payments=normalizePayments(data.payments);
       if (!data.trips || typeof data.trips !== 'object') data.trips={};
       if (!Number.isFinite(Number(data.tripPrice)) || Number(data.tripPrice)<0) data.tripPrice=1;
+      if (!Array.isArray(data.tripPrices)) data.tripPrices=[];
+      data.tripPrices=normalizeTripPrices(data.tripPrices,data.tripPrice);
+      data.tripPrice=priceFromHistory(data.tripPrices,iso(today),data.tripPrice);
       if (!Array.isArray(data.people)) data.people = [];
       if (!data.trips || typeof data.trips !== 'object') data.trips = {};
       for (const entry of Object.values(data.trips)) if (Array.isArray(entry.notes)) entry.notes=entry.notes.map(normalizeNote);
@@ -202,7 +217,8 @@
       const status = message => { $('saveState').textContent = message; };
       const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
       function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.20'],['parameter','tripPrice','',Number(data.tripPrice).toFixed(2)]];
+        const rows=[['type','date','direction','person'],['parameter','version','','1.1.21']];
+        for(const rate of normalizeTripPrices(data.tripPrices,data.tripPrice))rows.push(['parameter',rate.date,'tripPrice',Number(rate.price).toFixed(2)]);
         for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
         data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
         for(const date of Object.keys(data.trips).sort()) {
@@ -217,30 +233,33 @@
         for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell='';}else cell+=c;}
         if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}
         if(!rows.length||rows[0].map(v=>v.replace(/^\uFEFF/,'').trim()).join(',')!=='type,date,direction,person')throw new Error('CSV-tiedoston otsakerivi ei ole kelvollinen.');
-        const imported={people:[],inactivePeople:[],payments:[],trips:{}};
+        const imported={people:[],inactivePeople:[],payments:[],tripPrices:[],tripPrice:null,trips:{}};
         for(const [type,,direction,person] of rows.slice(1))if(type==='person'&&person){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}
-        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='saldo'&&/^\d{4}-\d{2}$/.test(date)&&Number.isFinite(Number(direction))){if(!imported.people.includes(person))imported.people.push(person);imported.payments.push({person,month:date,amount:Number(direction)});}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
+        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='parameter'&&direction==='tripPrice'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(Number(person))){imported.tripPrices.push({date,price:Number(person)});}else if(type==='parameter'&&date==='tripPrice'&&Number.isFinite(Number(person))){imported.tripPrice=Number(person);}else if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='saldo'&&/^\d{4}-\d{2}$/.test(date)&&Number.isFinite(Number(direction))){if(!imported.people.includes(person))imported.people.push(person);imported.payments.push({person,month:date,amount:Number(direction)});}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
         imported.payments=normalizePayments(imported.payments);
+        imported.tripPrices=normalizeTripPrices(imported.tripPrices,imported.tripPrice??1);
+        imported.tripPrice=priceFromHistory(imported.tripPrices,iso(today),imported.tripPrice??1);
         return imported;
       }
       const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); queueCsvWrite(); };
       async function writeCsv(){if(!csvHandle)return;try{let p=await csvHandle.queryPermission({mode:'readwrite'});if(p!=='granted')p=await csvHandle.requestPermission({mode:'readwrite'});if(p!=='granted'){status('CSV-tallennus odottaa lupaa.');return;}const w=await csvHandle.createWritable();await w.write(makeCsv());await w.close();status('Tallennettu CSV-tiedostoon.');}catch{status('CSV-tallennus ei onnistunut. Lataa varmuuskopio.');}}
       function queueCsvWrite(){if(!csvHandle)return;clearTimeout(writeTimer);status('Tallennetaan CSV-tiedostoon…');writeTimer=setTimeout(writeCsv,250);}
-      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.payments=imported.payments;data.trips=imported.trips;}
+      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.payments=imported.payments;data.tripPrices=imported.tripPrices;data.tripPrice=imported.tripPrice;data.trips=imported.trips;}
       const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
       const activePeople = () => data.people.map((name,index)=>({name,index})).filter(person=>!data.inactivePeople.includes(person.name));
       function monthlyBalance(personIndex, month) {
         const normalizedName=data.people[personIndex].trim().toLocaleLowerCase('fi-FI');
-        let to=0,home=0,driverRides=0;
+        let balance=0;
         for(const [date,entry] of Object.entries(data.trips)) {
           if(!date.startsWith(`${month}-`))continue;
           const notes=Array.isArray(entry.notes)?entry.notes:[];
-          driverRides+=notes.map(driverName).filter(Boolean).filter(name=>name.trim().toLocaleLowerCase('fi-FI')===normalizedName).length;
-          if(Array.isArray(entry.to)&&entry.to.includes(personIndex))to++;
-          if(Array.isArray(entry.home)&&entry.home.includes(personIndex))home++;
+          const driverRides=notes.map(driverName).filter(Boolean).filter(name=>name.trim().toLocaleLowerCase('fi-FI')===normalizedName).length;
+          const to=Array.isArray(entry.to)&&entry.to.includes(personIndex)?1:0;
+          const home=Array.isArray(entry.home)&&entry.home.includes(personIndex)?1:0;
+          balance+=(driverRides-to-home)*priceFromHistory(data.tripPrices,date,Number(data.tripPrice));
         }
-        return (driverRides-to-home)*Number(data.tripPrice);
+        return balance;
       }
       function monthlyPaid(personName, month) {
         return data.payments.filter(payment=>payment.person===personName&&payment.month===month).reduce((sum,payment)=>sum+Number(payment.amount||0),0);
@@ -326,7 +345,7 @@
             if(Array.isArray(entry.home)&&entry.home.includes(i))home++;
           }
           const paid=monthlyPaid(name,selectedMonth),carry=positiveCarryForward(i,selectedMonth);
-          return {name,to,home,driverRides,total:carry+(driverRides-to-home)*Number(data.tripPrice)+paid,paid,carry};
+          return {name,to,home,driverRides,total:carry+monthlyBalance(i,selectedMonth)+paid,paid,carry};
         });
         const sentAt = new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(new Date());
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid>0);
@@ -353,7 +372,20 @@
       $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;const existingIndex=data.people.findIndex(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'));if(existingIndex>=0){const existingName=data.people[existingIndex];if(data.inactivePeople.includes(existingName)){data.inactivePeople=data.inactivePeople.filter(p=>p!==existingName);input.setCustomValidity('');input.value='';save();render();return;}input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
       $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
       $('tripPrice').value=Number(data.tripPrice).toFixed(2);
-      $('tripPrice').addEventListener('change',e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0){data.tripPrice=Math.round(value*100)/100;save();renderReport();e.target.value=data.tripPrice.toFixed(2);}});
+      $('tripPrice').addEventListener('change',e=>{
+        const input=e.target,value=Number(input.value),oldPrice=Number(data.tripPrice);
+        if(!Number.isFinite(value)||value<0){input.value=oldPrice.toFixed(2);return;}
+        const price=Math.round(value*100)/100;
+        if(price===oldPrice){input.value=oldPrice.toFixed(2);return;}
+        const answer=window.prompt('Mistä päivämäärästä alkaen uutta arvoa käytetään? (VVVV-KK-PP)',iso(today));
+        if(answer===null){input.value=oldPrice.toFixed(2);return;}
+        const effectiveDate=answer.trim(),date=new Date(`${effectiveDate}T12:00:00`);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)||Number.isNaN(date.getTime())||iso(date)!==effectiveDate){status('Anna päivämäärä muodossa VVVV-KK-PP.');input.value=oldPrice.toFixed(2);return;}
+        const existingIndex=data.tripPrices.findIndex(rate=>rate.date===effectiveDate),newRate={date:effectiveDate,price};
+        if(existingIndex>=0)data.tripPrices[existingIndex]=newRate;else data.tripPrices.push(newRate);
+        data.tripPrices=normalizeTripPrices(data.tripPrices,oldPrice);data.tripPrice=priceFromHistory(data.tripPrices,iso(today),oldPrice);
+        save();renderReport();input.value=data.tripPrice.toFixed(2);status(`Matkustetun suunnan arvo tallennettu alkaen ${effectiveDate}.`);
+      });
       $('paymentsButton').addEventListener('click',()=>{
         const panel=$('paymentPanel');panel.hidden=!panel.hidden;$('paymentsButton').setAttribute('aria-expanded',String(!panel.hidden));
         if(panel.hidden)return;
