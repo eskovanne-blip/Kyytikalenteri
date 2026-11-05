@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.0-firebase.1` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.0-firebase.5` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 Sovellus käyttää Firebase-projektia `kyytikalenteri-auth`, sähköposti- ja salasanakirjautumista sekä Firestore-tietokantaa alueella `europe-north1`. Käyttäjän on vahvistettava sähköpostiosoitteensa ennen kalenterin luomista tai siihen liittymistä.
 
@@ -13,3 +13,4 @@ Sovellus käyttää Firebase-projektia `kyytikalenteri-auth`, sähköposti- ja s
 5. Perheenjäsen rekisteröityy samalla sähköpostilla, vahvistaa osoitteensa ja syöttää kalenterin tunnuksen sekä kutsukoodin.
 
 Kaikki perheenjäsenet käyttävät samaa `households/{tunnus}/state/calendar`-asiakirjaa. Säännöt rajaavat luku- ja kirjoitusoikeuden vahvistettuun käyttäjään, joka on aktiivinen kalenterin jäsen. Älä lisää tähän hakemistoon Firebase Admin SDK:n yksityisiä avaimia.
+
