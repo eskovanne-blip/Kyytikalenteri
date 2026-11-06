@@ -1,10 +1,10 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.16` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.17` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Varmuuskopio data
 
-Parametrit-osiossa omistaja tai ylläpitäjä voi valita **Lataa CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä jäsenyydet suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. CSV-tuonti, tiedoston avaaminen, paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
+Parametrit-osiossa omistaja tai ylläpitäjä voi valita **Tee CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä jäsenyydet suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. Vanhat CSV-tiedoston avaamisen toiminnot ja paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
 
 CSV:n merkistö on UTF-8 (BOM), rivinvaihto CRLF ja sarakkeet ovat alkuperäiset `type,date,direction,person`. Alkuperäiset `parameter`, `saldo`, `person`, `trip` ja `note` -rivit säilyvät samassa muodossa, mukaan lukien hintahistoria, maksun etumerkki ja käytöstä poistetut henkilöt. `parameter,version` säilyttää alkuperäisen CSV-muodon version `1.1.22`.
 
@@ -16,6 +16,10 @@ Lisätietueet käyttävät samoja neljää saraketta:
 | `member` | Firebase Auth UID | Rooli (`owner`, `admin`, `member`) | JSON: `email`, `active`, `joinedAt` |
 
 Mukana ovat kaikki kalenterin Firestore-jäsenyydet, myös passiiviset. Nämä kuvaavat kalenterin käyttöoikeuksia, eivät Firebase-projektin kaikkien Auth-tilien luetteloa. Salasanoja, salaisia kirjautumis- tai istuntotunnisteita tai kutsukoodeja ei viedä. Käyttäjäluettelon lukeminen edellyttää nykyisten Firestore-sääntöjen mukaisia ylläpitäjän oikeuksia. Vanha CSV-lukija voi käsitellä kalenterimerkinnät ja ohittaa uudet tietuetyypit; Auth-tilejä ei voi palauttaa tällä CSV:llä.
+
+**Palauta CSV-varmuuskopio** on varmuuskopion tekemisen napin alapuolella. Omistaja tai ylläpitäjä valitsee CSV-tiedoston (enintään 5 Mt). Tiedosto tarkistetaan ja vahvistuskysymyksessä näytetään lähde- ja kohdekalenteri, henkilöiden, päivien ja maksujen määrät sekä päivämerkintöjen ajanjakso. **Peruuta** keskeyttää muuttamatta tietoja.
+
+Hyväksytty palautus korvaa kalenterin henkilöt, päivämerkinnät, maksut ja hintahistorian kaikilta kuukausilta. Kalenterin käyttäjäjäsenyyksiä, tunnuksia ja käyttöoikeuksia ei palauteta tai muuteta. Alkuperäisen muodon CSV:t sekä uudet varmuuskopiot käyvät palautukseen. Palautus kirjoitetaan Firestore-transaktiolla ja keskeytetään, jos kalenteri on muuttunut vahvistuskysymyksen aikana, kirjautuminen vaihtuu, oikeudet puuttuvat tai yhteys ei toimi. Paikallinen kalenteri päivitetään onnistuneen tallennuksen jälkeen.
 
 Kuukausiyhteenvedon alareunan **Tee PDF** lataa valitun kuukauden A4-pystyraportin. Raportissa näkyvät samat maksut ja saldot kuin kuukausiyhteenvedossa sekä päivien henkilöt ja merkinnät aamu- ja iltasarakkeissa. Päivät ilman merkintöjä jätetään pois. Päivätaulukko tiivistyy tarvittaessa: tavallinen 20 koulupäivän kuukausi mahtuu yhdelle sivulle. Poikkeuksellisen pitkä sisältö jatkuu lisäsivuille ilman tietojen poisjättämistä. Koko päivälle tallennetut merkinnät näytetään molemmissa sarakkeissa.
 

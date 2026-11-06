@@ -13,6 +13,16 @@ const parsed=JSON.parse(JSON.stringify(context.parseCsv(csv)));
 for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(parsed[key],payload[key],key+' legacy round trip');
 assert(csv.includes('"member","u1","owner"'));assert(csv.includes('"member","u2","member"'));assert(csv.includes('""active"":false'));
 assert(!csv.includes('password'));assert(csv.includes('F_2.0.16'));
+const restored=parseCalendarBackupCsv(csv);
+for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(restored.payload[key],payload[key],key+' restore round trip');
+assert.equal(restored.calendar.id,'cal1');assert.equal(restored.memberCount,2);
+assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person\ntrip,2026-02-30,to,Anna'),/virheellinen/);
+assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person\nsaldo,2026-11,NaN,Anna'),/virheellinen/);
+assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person\nperson,,,"unfinished'),/virheellinen/);
+assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person'),/virheellinen/);
+assert.throws(()=>parseCalendarBackupCsv(csv+'"unexpected","","","x"\r\n'),/virheellinen/);
+const minimal=parseCalendarBackupCsv('type,date,direction,person\nparameter,tripPrice,,1.50\ntrip,2026-11-02,to,Anna\nnote,2026-11-02,,Pekka ajoi');
+assert.deepEqual(minimal.payload.people,['Anna']);assert.equal(minimal.payload.trips['2026-11-02'].notes[0],'Pekka ajoi aamulla');
 const doc=data=>({exists:()=>true,data:()=>data});
 function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',stateRef:'state',memberRef:'own',calendarRef:'calendar',pendingWrites:Promise.resolve(),readDocument:async ref=>doc(ref==='own'?member:ref==='state'?{payload}:snapshot.calendar),readMembers:async()=>({docs:[{id:member.uid,data:()=>({...member,joinedAt:{toDate:()=>new Date(member.joinedAt)},inviteCode:'DO-NOT-EXPORT'})}]}),isCurrent:()=>true};}
 (async()=>{
@@ -22,6 +32,14 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  await assert.rejects(()=>readCalendarBackup({...options(),user:null}),/Kirjaudu/);
  await assert.rejects(()=>readCalendarBackup({...options(),isCurrent:()=>false}),/vaihtui/);
  await assert.rejects(()=>readCalendarBackup({...options(),readMembers:async()=>{throw Error('offline');}}),/offline/);
+ const writes=[];
+ const restoreOptions={payload:restored.payload,expected:{...snapshot,userUid:'u1'},user:{uid:'u1',emailVerified:true},calendarId:'cal1',stateRef:'state',memberRef:'own',pendingWrites:Promise.resolve(),isCurrent:()=>true,writeMetadata:()=>({updatedAt:'server-time',updatedBy:'u1'}),executeTransaction:async callback=>callback({get:async ref=>doc(ref==='own'?member:{payload}),update:(...args)=>writes.push(args)})};
+ await restoreCalendarBackup(restoreOptions);assert.equal(writes.length,1);assert.equal(writes[0][0],'state');assert.deepEqual(writes[0][1].payload,restored.payload);
+ writes.length=0;
+ await assert.rejects(()=>restoreCalendarBackup({...restoreOptions,expected:{...restoreOptions.expected,payload:{...payload,people:[]}}}),/uusia muutoksia/);assert.equal(writes.length,0);
+ await assert.rejects(()=>restoreCalendarBackup({...restoreOptions,isCurrent:()=>false}),/vaihtui/);assert.equal(writes.length,0);
+ await assert.rejects(()=>restoreCalendarBackup({...restoreOptions,executeTransaction:async callback=>callback({get:async()=>doc({...member,role:'member'}),update:()=>writes.push('forbidden')})}),/ylläpitäjän/);assert.equal(writes.length,0);
+ await assert.rejects(()=>restoreCalendarBackup({...restoreOptions,executeTransaction:async()=>{throw Error('offline');}}),/offline/);assert.equal(writes.length,0);
  let flushed=false;const o=options();o.pendingWrites=Promise.resolve().then(()=>{flushed=true;});const original=o.readDocument;o.readDocument=async ref=>{assert(flushed);return original(ref);};await readCalendarBackup(o);
  const html=fs.readFileSync('firebase-auth/index.html','utf8');
  assert(!/csvHandle|parseCsv|showOpenFilePicker|showSaveFilePicker|indexedDB|queueCsvWrite|csvActions|restoreCsvHandle/.test(html));
@@ -35,5 +53,12 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  await elements.get('backupData').handlers.click();assert(serverRead);assert(downloaded);assert(elements.get('backupStatus').textContent.includes('Käyttäjiä: 2'));
  downloaded=false;browser.window.firebaseReadBackup=async()=>{throw Object.assign(Error('offline'),{code:'unavailable'});};
  await elements.get('backupData').handlers.click();assert(!downloaded);assert(elements.get('backupStatus').textContent.includes('Varmuuskopiota ei luotu'));assert.equal(elements.get('backupData').disabled,false);
- console.log('PASS: legacy CSV round trip, all member roles/statuses, server-only reads, pending writes, permissions/offline/session failures, removed CSV features, UI startup and backup click.');
+ let restoreCalls=0;browser.window.parseCalendarBackupCsv=parseCalendarBackupCsv;browser.window.firebaseReadBackup=async()=>({...snapshot,userUid:'u1'});
+ browser.window.firebaseRestoreCalendar=async(p,expected)=>{assert.equal(expected.userUid,'u1');assert.deepEqual(p,restored.payload);restoreCalls++;};
+ let confirmation='';browser.window.confirm=question=>{confirmation=question;return false;};
+ const fileInput={files:[{name:'backup.csv',size:csv.length,text:async()=>csv}],value:'backup.csv'};
+ await elements.get('restoreBackupFile').handlers.change({target:fileInput});assert.equal(restoreCalls,0);assert(confirmation.includes('korvataan'));assert(confirmation.includes('Käyttäjätunnukset ja käyttöoikeudet säilyvät'));assert(elements.get('backupStatus').textContent.includes('peruutettu'));
+ browser.window.confirm=()=>true;await elements.get('restoreBackupFile').handlers.change({target:fileInput});assert.equal(restoreCalls,1);assert(elements.get('backupStatus').textContent.includes('palautettu'));
+ fileInput.files[0].text=async()=> 'invalid';await elements.get('restoreBackupFile').handlers.change({target:fileInput});assert.equal(restoreCalls,1);assert(elements.get('backupStatus').textContent.includes('virheellinen'));
+ console.log('PASS: backup/restore round trips, malformed CSV rejection, legacy format, admin and session checks, concurrent edits, offline failures, UI confirmation cancel and restore, no user-account writes.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
