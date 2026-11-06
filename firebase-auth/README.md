@@ -1,6 +1,21 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.15` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.16` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+
+## Varmuuskopio data
+
+Parametrit-osiossa omistaja tai ylläpitäjä voi valita **Lataa CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä jäsenyydet suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. CSV-tuonti, tiedoston avaaminen, paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
+
+CSV:n merkistö on UTF-8 (BOM), rivinvaihto CRLF ja sarakkeet ovat alkuperäiset `type,date,direction,person`. Alkuperäiset `parameter`, `saldo`, `person`, `trip` ja `note` -rivit säilyvät samassa muodossa, mukaan lukien hintahistoria, maksun etumerkki ja käytöstä poistetut henkilöt. `parameter,version` säilyttää alkuperäisen CSV-muodon version `1.1.22`.
+
+Lisätietueet käyttävät samoja neljää saraketta:
+
+| type | date | direction | person |
+| --- | --- | --- | --- |
+| `calendar` | Kalenterin tunnus | `metadata` | JSON: `id`, `name`, `ownerUid`, `exportedAt`, `appVersion` |
+| `member` | Firebase Auth UID | Rooli (`owner`, `admin`, `member`) | JSON: `email`, `active`, `joinedAt` |
+
+Mukana ovat kaikki kalenterin Firestore-jäsenyydet, myös passiiviset. Nämä kuvaavat kalenterin käyttöoikeuksia, eivät Firebase-projektin kaikkien Auth-tilien luetteloa. Salasanoja, salaisia kirjautumis- tai istuntotunnisteita tai kutsukoodeja ei viedä. Käyttäjäluettelon lukeminen edellyttää nykyisten Firestore-sääntöjen mukaisia ylläpitäjän oikeuksia. Vanha CSV-lukija voi käsitellä kalenterimerkinnät ja ohittaa uudet tietuetyypit; Auth-tilejä ei voi palauttaa tällä CSV:llä.
 
 Kuukausiyhteenvedon alareunan **Tee PDF** lataa valitun kuukauden A4-pystyraportin. Raportissa näkyvät samat maksut ja saldot kuin kuukausiyhteenvedossa sekä päivien henkilöt ja merkinnät aamu- ja iltasarakkeissa. Päivät ilman merkintöjä jätetään pois. Päivätaulukko tiivistyy tarvittaessa: tavallinen 20 koulupäivän kuukausi mahtuu yhdelle sivulle. Poikkeuksellisen pitkä sisältö jatkuu lisäsivuille ilman tietojen poisjättämistä. Koko päivälle tallennetut merkinnät näytetään molemmissa sarakkeissa.
 

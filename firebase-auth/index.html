@@ -133,7 +133,6 @@
     .report-table .balance-negative { color:#c54646; font-weight:750 }
     .report-table .balance-nonnegative { color:var(--green); font-weight:750 }
     .report-table tfoot { font-weight:750 }
-    #csvFilePathBlock,#csvActionBlock { display:none }
     .report-empty { color:var(--muted); font-size:13px; margin:0 }
     footer { color:var(--muted); font-size:12px; text-align:center; margin-top:19px }
     @media(max-width:850px) { .layout { grid-template-columns:1fr } .sidebar { grid-template-columns:1fr 1fr } .day { min-height:90px } }
@@ -143,7 +142,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(F_2.0.15)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div><h1>Koulukyydit <span class="version">(F_2.0.16)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -185,9 +184,7 @@
           <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Merkitse suoritettuja maksuja</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Maksun suorittaja</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi johon suoritus kohdistuu</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><div class="payment-actions"><button class="primary" id="savePayment" type="button">Tallenna saldo</button><button class="secondary" id="cancelPayment" type="button">Peruuta</button><button class="secondary remove-payment" id="removePayment" type="button" hidden>Poista</button><button class="secondary" id="payPayment" type="button">Maksa</button></div></div></div></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
-          <div class="path-row" id="csvFilePathBlock"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p></div>
-          <div class="note-controls" id="csvActionBlock"><select id="csvActions" aria-label="CSV toiminnot"><option value="" selected>CSV toiminnot</option><option value="selectCsv">Valitse CSV</option><option value="openCsv">Luo uusi CSV</option><option value="readCsv">Lue tapahtumat CSV tiedostosta</option><option value="downloadCsv">Tee varmuuskopio</option><option value="updateCsv">Talleta muutokset CSV tiedostoon</option></select></div>
-          <div hidden><button id="selectCsv" type="button"></button><button id="openCsv" type="button"></button><button id="readCsv" type="button"></button><button id="downloadCsv" type="button"></button><button id="updateCsv" type="button"></button></div>
+          <div class="path-row"><h3 style="margin:10px 0 4px">Varmuuskopio data</h3><p class="hint" id="backupHint" style="margin:0">Omistaja tai ylläpitäjä voi ladata kalenteritiedot ja kalenterin käyttäjät CSV-tiedostoon.</p><button class="secondary" id="backupData" type="button" disabled>Lataa CSV-varmuuskopio</button><p class="hint" id="backupStatus" role="status" style="margin:0"></p></div>
         </section>
         <section class="card panel" id="userManagement" hidden aria-labelledby="userManagementTitle"><h2 id="userManagementTitle">Käyttäjät</h2><p class="hint">Luo kutsukoodeja ja hallitse kalenterin jäseniä.</p><div class="path-row"><button class="secondary" id="createInvite" type="button">Luo kutsukoodi</button><span id="inviteResult" class="hint" style="margin:0"></span></div><div class="member-list" id="memberList"></div><span id="memberManagementStatus" class="hint" style="margin:0"></span></section>
       </aside>
@@ -196,11 +193,12 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.15"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.16"></script>
+  <script src="./calendar-backup.js?v=F_2.0.16"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, getDocFromServer, getDocsFromServer, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
     const firebaseApp = initializeApp({apiKey:'AIzaSyDE6LNqHnV_MHzJxDcBsKkjT1Ye3ZH2jBQ',authDomain:'kyytikalenteri-auth.firebaseapp.com',projectId:'kyytikalenteri-auth',storageBucket:'kyytikalenteri-auth.firebasestorage.app',messagingSenderId:'274160528683',appId:'1:274160528683:web:315c3073bf18b9ba8fa96e'});
     const auth = getAuth(firebaseApp), firestore = getFirestore(firebaseApp);
     let currentUser = null, householdId = null, remoteStateRef = null, stopSync = null;
@@ -219,19 +217,29 @@
     document.getElementById('memberList').addEventListener('click',async event=>{const button=event.target.closest('[data-remove-member]');if(!button||!householdId||!currentUser)return;const uid=button.dataset.removeMember,email=button.dataset.memberEmail;if(uid===currentUser.uid)return;button.disabled=true;try{const invites=await getDocs(collection(firestore,'households',householdId,'invites'));for(const invite of invites.docs)if(invite.data().email===email&&invite.data().active)await deleteDoc(invite.ref);await deleteDoc(doc(firestore,'households',householdId,'members',uid));document.getElementById('memberManagementStatus').textContent='Käyttäjän pääsy poistettu. Aiemmat päivämerkinnät säilyvät.';await refreshUserManagement();}catch(error){authError(error);button.disabled=false;}});
     let persistQueue=Promise.resolve();
     window.firebasePersistCalendar = payload => { if(!remoteStateRef)return Promise.resolve(); const snapshot=JSON.parse(JSON.stringify(payload)); persistQueue=persistQueue.then(()=>setDoc(remoteStateRef,{payload:snapshot,updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||null},{merge:true})); return persistQueue; };
+    window.firebaseReadBackup = () => {
+      const user=currentUser,id=householdId,ref=remoteStateRef;
+      return window.readCalendarBackup({user,calendarId:id,stateRef:ref,pendingWrites:persistQueue,
+        memberRef:user&&id?doc(firestore,'households',id,'members',user.uid):null,
+        calendarRef:id?doc(firestore,'households',id):null,
+        readDocument:getDocFromServer,readMembers:()=>getDocsFromServer(collection(firestore,'households',id,'members')),
+        isCurrent:()=>currentUser?.uid===user?.uid&&householdId===id&&remoteStateRef===ref});
+    };
     async function refreshUserManagement() {
       const section=document.getElementById('userManagement'),list=document.getElementById('memberList'),status=document.getElementById('memberManagementStatus');
+      document.getElementById('backupData').disabled=true;
       if(!householdId||!currentUser){section.hidden=true;return;}
       try {
         const own=await getDoc(doc(firestore,'households',householdId,'members',currentUser.uid));
         if(!own.exists()||!['owner','admin'].includes(own.data().role)){section.hidden=true;return;}
+        document.getElementById('backupData').disabled=false;
         section.hidden=false; list.innerHTML='<div class="hint">Ladataan käyttäjiä…</div>'; status.textContent='';
         const members=await getDocs(collection(firestore,'households',householdId,'members'));
         list.innerHTML=members.empty?'<div class="hint">Kalenteriin ei ole vielä lisätty muita käyttäjiä.</div>':members.docs.map(member=>{const value=member.data(),isSelf=member.id===currentUser.uid,role=value.role==='owner'?'Omistaja':value.role==='admin'?'Ylläpitäjä':'Jäsen',state=value.active?'':' · poistettu käytöstä';return `<div class="member-row"><div class="member-details"><div>${escapeHtml(value.email||'Tuntematon käyttäjä')}${isSelf?' (sinä)':''}</div><div class="member-role">${role}${state}</div></div>${isSelf?'':`<button class="member-remove" type="button" data-remove-member="${escapeHtml(member.id)}" data-member-email="${escapeHtml(value.email||'')}">Poista</button>`}</div>`;}).join('');
       } catch(error) { section.hidden=false; list.innerHTML=''; status.textContent=`Käyttäjien lataus epäonnistui: ${error?.code||error?.message||'tuntematon virhe'}`; }
     }
     async function attachHousehold(id) { householdId=id; localStorage.setItem('firebase-household-id',id); const householdSnap=await getDoc(doc(firestore,'households',id)); document.getElementById('headerHouseholdName').textContent=householdSnap.exists()?householdSnap.data().name:'Yhteinen kalenteri'; remoteStateRef=doc(firestore,'households',id,'state','calendar'); const snap=await getDoc(remoteStateRef); if(snap.exists()&&snap.data().payload&&sessionStorage.getItem('firebase-calendar-loaded')!==id){ localStorage.setItem('koulukyytikalenteri-v1',JSON.stringify(snap.data().payload)); sessionStorage.setItem('firebase-calendar-loaded',id); location.reload(); return; } if(!snap.exists()) await window.firebasePersistCalendar(JSON.parse(localStorage.getItem('koulukyytikalenteri-v1')||'{}')); if(stopSync)stopSync(); stopSync=onSnapshot(remoteStateRef,remote=>{ if(!remote.exists()||remote.metadata.hasPendingWrites)return; const payload=remote.data().payload; if(payload)window.applyFirebaseCalendar?.(payload); }); appPanel.hidden=false; document.getElementById('householdSetup').hidden=true; await refreshUserManagement(); }
-    onAuthStateChanged(auth, async user => { currentUser=user; appPanel.hidden=true; document.getElementById('householdSetup').hidden=true; document.getElementById('userManagement').hidden=true; document.getElementById('headerUserEmail').textContent=user?.email||''; document.getElementById('signedInRow').hidden=!user?.email; if(!user){document.getElementById('authPanel').hidden=false;document.getElementById('authForm').hidden=false;document.getElementById('showInviteSignup').hidden=false;document.getElementById('inviteSignupForm').hidden=true;document.getElementById('authTitle').textContent='Kirjaudu sisään';document.getElementById('headerHouseholdName').textContent='Yhteinen kalenteri';authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenteriin voi liittyä vain voimassa olevalla kutsukoodilla.');return;} document.getElementById('authForm').hidden=true;document.getElementById('showInviteSignup').hidden=true;document.getElementById('inviteSignupForm').hidden=true; if(!user.emailVerified){document.getElementById('authPanel').hidden=false;document.getElementById('authTitle').textContent='Vahvista sähköposti';authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');return;} document.getElementById('authPanel').hidden=true; try { const pending=JSON.parse(localStorage.getItem('kyytikalenteri-pending-invite')||'null'); if(pending&&pending.email===String(user.email||'').toLowerCase()){await acceptInvite(pending.householdId,pending.code);return;} const remembered=localStorage.getItem('firebase-household-id'); if(remembered){ const membership=await getDoc(doc(firestore,'households',remembered,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(remembered);return;} if(remembered===user.uid){await setDoc(doc(firestore,'households',remembered,'members',user.uid),{email:user.email,role:'owner',active:true,joinedAt:serverTimestamp()});await attachHousehold(remembered);return;} } const membership=await getDoc(doc(firestore,'households',user.uid,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(user.uid);return;} document.getElementById('householdSetup').hidden=false;document.getElementById('householdMessage').textContent='Et ole vielä kalenterin jäsen. Liity kutsukoodilla tai pyydä kutsu ylläpitäjältä.'; } catch(error) { authError(error); } });
+    onAuthStateChanged(auth, async user => { currentUser=user; document.getElementById('backupData').disabled=true; document.getElementById('backupStatus').textContent=''; appPanel.hidden=true; document.getElementById('householdSetup').hidden=true; document.getElementById('userManagement').hidden=true; document.getElementById('headerUserEmail').textContent=user?.email||''; document.getElementById('signedInRow').hidden=!user?.email; if(!user){document.getElementById('authPanel').hidden=false;document.getElementById('authForm').hidden=false;document.getElementById('showInviteSignup').hidden=false;document.getElementById('inviteSignupForm').hidden=true;document.getElementById('authTitle').textContent='Kirjaudu sisään';document.getElementById('headerHouseholdName').textContent='Yhteinen kalenteri';authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenteriin voi liittyä vain voimassa olevalla kutsukoodilla.');return;} document.getElementById('authForm').hidden=true;document.getElementById('showInviteSignup').hidden=true;document.getElementById('inviteSignupForm').hidden=true; if(!user.emailVerified){document.getElementById('authPanel').hidden=false;document.getElementById('authTitle').textContent='Vahvista sähköposti';authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');return;} document.getElementById('authPanel').hidden=true; try { const pending=JSON.parse(localStorage.getItem('kyytikalenteri-pending-invite')||'null'); if(pending&&pending.email===String(user.email||'').toLowerCase()){await acceptInvite(pending.householdId,pending.code);return;} const remembered=localStorage.getItem('firebase-household-id'); if(remembered){ const membership=await getDoc(doc(firestore,'households',remembered,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(remembered);return;} if(remembered===user.uid){await setDoc(doc(firestore,'households',remembered,'members',user.uid),{email:user.email,role:'owner',active:true,joinedAt:serverTimestamp()});await attachHousehold(remembered);return;} } const membership=await getDoc(doc(firestore,'households',user.uid,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(user.uid);return;} document.getElementById('householdSetup').hidden=false;document.getElementById('householdMessage').textContent='Et ole vielä kalenterin jäsen. Liity kutsukoodilla tai pyydä kutsu ylläpitäjältä.'; } catch(error) { authError(error); } });
   </script>
   <script>
     (() => {
@@ -285,35 +293,8 @@
       let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
       let selected = iso(today);
       const $ = id => document.getElementById(id);
-      let csvHandle = null, writeTimer = null;
       const status = message => { $('saveState').textContent = message; };
-      const csvCell = value => `"${String(value).replace(/"/g,'""')}"`;
-      function makeCsv() {
-        const rows=[['type','date','direction','person'],['parameter','version','','1.1.22']];
-        for(const rate of normalizeTripPrices(data.tripPrices,data.tripPrice))rows.push(['parameter',rate.date,'tripPrice',Number(rate.price).toFixed(2)]);
-        for(const payment of normalizePayments(data.payments)) rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
-        data.people.forEach(name=>rows.push(['person','',data.inactivePeople.includes(name)?'inactive':'',name]));
-        for(const date of Object.keys(data.trips).sort()) {
-          const entry=data.trips[date];
-          for(const way of ['to','home']) for(const i of (Array.isArray(entry[way])?entry[way]:[])) if(data.people[i]!==undefined) rows.push(['trip',date,way,data.people[i]]);
-          if(Array.isArray(entry.notes)) for(const note of entry.notes) rows.push(['note',date,'',note]);
-        }
-        return '\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
-      }
-      function parseCsv(text) {
-        const rows=[]; let row=[],cell='',quoted=false;
-        for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell='';}else cell+=c;}
-        if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}
-        if(!rows.length||rows[0].map(v=>v.replace(/^\uFEFF/,'').trim()).join(',')!=='type,date,direction,person')throw new Error('CSV-tiedoston otsakerivi ei ole kelvollinen.');
-        const imported={people:[],inactivePeople:[],payments:[],tripPrices:[],tripPrice:null,trips:{}};
-        for(const [type,,direction,person] of rows.slice(1))if(type==='person'&&person){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}
-        for(const [type,date,direction,person] of rows.slice(1)){if(!person)continue;if(type==='parameter'&&direction==='tripPrice'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isFinite(Number(person))){imported.tripPrices.push({date,price:Number(person)});}else if(type==='parameter'&&date==='tripPrice'&&Number.isFinite(Number(person))){imported.tripPrice=Number(person);}else if(type==='person'){if(!imported.people.includes(person))imported.people.push(person);if(direction==='inactive'&&!imported.inactivePeople.includes(person))imported.inactivePeople.push(person);}else if(type==='saldo'&&/^\d{4}-\d{2}$/.test(date)&&Number.isFinite(Number(direction))){if(!imported.people.includes(person))imported.people.push(person);imported.payments.push({person,month:date,amount:Number(direction)});}else if(type==='trip'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&(direction==='to'||direction==='home')){if(!imported.people.includes(person))imported.people.push(person);if(!imported.trips[date])imported.trips[date]={to:[],home:[]};const i=imported.people.indexOf(person);if(!imported.trips[date][direction].includes(i))imported.trips[date][direction].push(i);}else if(type==='note'&&/^\d{4}-\d{2}-\d{2}$/.test(date)){if(!imported.trips[date])imported.trips[date]={to:[],home:[],notes:[]};if(!Array.isArray(imported.trips[date].notes))imported.trips[date].notes=[];const normalizedNote=normalizeNote(person);if(!imported.trips[date].notes.includes(normalizedNote))imported.trips[date].notes.push(normalizedNote);}}
-        imported.payments=normalizePayments(imported.payments);
-        imported.tripPrices=normalizeTripPrices(imported.tripPrices,imported.tripPrice??1);
-        imported.tripPrice=priceFromHistory(imported.tripPrices,iso(today),imported.tripPrice??1);
-        return imported;
-      }
-      const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); queueCsvWrite(); window.firebasePersistCalendar?.(data).then(()=>status('Tallennettu yhteiseen Firebase-kalenteriin.')).catch(()=>status('Firebase-tallennus epäonnistui. Tarkista yhteys.')); };
+      const save = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); window.firebasePersistCalendar?.(data).then(()=>status('Tallennettu yhteiseen Firebase-kalenteriin.')).catch(()=>status('Firebase-tallennus epäonnistui. Tarkista yhteys.')); };
       window.applyFirebaseCalendar = payload => {
         if(!payload||typeof payload!=='object'||JSON.stringify(payload)===JSON.stringify(data))return;
         data={...payload};
@@ -325,9 +306,6 @@
         data.tripPrices=normalizeTripPrices(Array.isArray(data.tripPrices)?data.tripPrices:[],data.tripPrice);
         localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render();status('Käyttäjän muutokset synkronoitu.');
       };
-      async function writeCsv(){if(!csvHandle)return;try{let p=await csvHandle.queryPermission({mode:'readwrite'});if(p!=='granted')p=await csvHandle.requestPermission({mode:'readwrite'});if(p!=='granted'){status('CSV-tallennus odottaa lupaa.');return;}const w=await csvHandle.createWritable();await w.write(makeCsv());await w.close();status('Tallennettu CSV-tiedostoon.');}catch{status('CSV-tallennus ei onnistunut. Lataa varmuuskopio.');}}
-      function queueCsvWrite(){if(!csvHandle)return;clearTimeout(writeTimer);status('Tallennetaan CSV-tiedostoon…');writeTimer=setTimeout(writeCsv,250);}
-      function mergeCsv(text){const imported=parseCsv(text);data.people=imported.people;data.inactivePeople=imported.inactivePeople;data.payments=imported.payments;data.tripPrices=imported.tripPrices;data.tripPrice=imported.tripPrice;data.trips=imported.trips;}
       const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
       const activePeople = () => data.people.map((name,index)=>({name,index})).filter(person=>!data.inactivePeople.includes(person.name));
@@ -441,25 +419,26 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.15'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.16'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
         });
         pdfActions.append(pdfButton);$('monthReport').append(pdfActions);
       }
-      function backupFilename() {
-        const now=new Date(), year=now.getFullYear(), month=String(now.getMonth()+1).padStart(2,'0');
-        const original=(csvHandle?.name||'koulukyydit.csv').split(/[\\/]/).pop().replace(/[^\w.\- äöåÄÖÅ]/g,'_');
-        const stem=original.replace(/\.csv$/i,'')||'koulukyydit';
-        const day=String(now.getDate()).padStart(2,'0');
-        return `${year}_${month}_${day}_${stem}.csv`;
-      }
-      function downloadBackup() {
-        const blob=new Blob([makeCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-        a.href=url;a.download=backupFilename();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-        status(`CSV-varmuuskopio ladattu: ${a.download}`);
-      }
+      $('backupData').addEventListener('click',async()=>{
+        const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
+        try {
+          const snapshot=await window.firebaseReadBackup();
+          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.16');
+          const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
+          const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
+          link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+          message.textContent=`Varmuuskopio ladattu: ${filename}. Käyttäjiä: ${snapshot.members.length}.`;
+        } catch(error) {
+          message.textContent=error?.code==='permission-denied'?'Varmuuskopiointi vaatii omistajan tai ylläpitäjän oikeudet.':error?.code==='unavailable'?'Tietokantaan ei saada yhteyttä. Varmuuskopiota ei luotu.':error?.message||'Varmuuskopiointi epäonnistui. Yritä uudelleen.';
+        } finally {button.disabled=false;}
+      });
       function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
       $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
@@ -507,8 +486,7 @@
         if(existingIndex>=0)data.payments[existingIndex]=payment;else data.payments.push(payment);
         data.payments=normalizePayments(data.payments);save();renderReport();$('paymentPanel').hidden=true;$('paymentsButton').setAttribute('aria-expanded','false');
         const message=direction<0?'Maksu kirjattu ja saldoa vähennetty.':'Saldo tallennettu.';
-        if(!csvHandle)status(`${message} Valitse CSV, jotta se tallentuu tiedostoon.`);
-        else status(message);
+        status(message);
       }
       $('savePayment').addEventListener('click',()=>savePaymentAdjustment(1));
       $('payPayment').addEventListener('click',()=>savePaymentAdjustment(-1));
@@ -542,39 +520,8 @@
         const c=e.target.closest('[data-way]');if(!c)return;const arr=trip(selected,c.dataset.way),i=Number(c.dataset.person);if(c.checked&&!arr.includes(i))arr.push(i);if(!c.checked)data.trips[selected][c.dataset.way]=arr.filter(n=>n!==i);save();renderCalendar();renderDetail();
       });
       $('detail').addEventListener('click',e=>{if(e.target.closest('#goToday')){selected=iso(today);cursor=new Date(today.getFullYear(),today.getMonth(),1);render();return;}if(e.target.closest('#addAll')){const everyone=activePeople().map(({index})=>index);data.trips[selected]={...data.trips[selected],to:[...everyone],home:[...everyone]};save();render();return;}if(e.target.closest('#removeAll')){data.trips[selected]={...data.trips[selected],to:[],home:[]};save();render();return;}const removeNote=e.target.closest('[data-remove-note]');if(removeNote){data.trips[selected].notes=(data.trips[selected].notes||[]).filter(note=>note!==removeNote.dataset.removeNote);save();render();}});
-      $('openCsv').addEventListener('click',async()=>{
-        try{
-          if(!window.showSaveFilePicker){status('Tämä selain ei tue suoraa CSV-tallennusta. Lataa CSV-varmuuskopio.');return;}
-          const handle=await window.showSaveFilePicker({suggestedName:'koulukyydit.csv',types:[{description:'CSV-tiedosto',accept:{'text/csv':['.csv']}}]});
-          csvHandle=handle;$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;await storeCsvHandle(handle);let permission=await handle.queryPermission({mode:'readwrite'});if(permission!=='granted')permission=await handle.requestPermission({mode:'readwrite'});const file=await handle.getFile();if(file.size)mergeCsv(await file.text());save();render();if(permission==='granted')await writeCsv();else status('CSV luettu. Tallennuslupa tarvitaan muutosten automaattitallennukseen.');
-        }catch(error){if(error.name!=='AbortError')status('CSV-tiedoston avaaminen ei onnistunut.');}
-      });
-      $('selectCsv').addEventListener('click',async()=>{
-        try{
-          if(!window.showOpenFilePicker){status('Tämä selain ei tue CSV-tiedoston suoraa valintaa.');return;}
-          const [handle]=await window.showOpenFilePicker({multiple:false,types:[{description:'CSV-tiedosto',accept:{'text/csv':['.csv']}}]});
-          const file=await handle.getFile(), text=await file.text();
-          if(file.size)parseCsv(text);
-          csvHandle=handle;mergeCsv(text);$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;await storeCsvHandle(handle);
-          localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render();let permission=await handle.queryPermission({mode:'readwrite'});if(permission!=='granted')permission=await handle.requestPermission({mode:'readwrite'});if(permission==='granted')await writeCsv();else status('CSV luettu. Salli kirjoittaminen, jotta muutokset tallentuvat tähän tiedostoon.');
-        }catch(error){if(error.name!=='AbortError')status('CSV-tiedoston valinta tai luku ei onnistunut.');}
-      });
-      $('readCsv').addEventListener('click',async()=>{
-        if(!csvHandle){status('Valitse ensin CSV-tiedosto.');return;}
-        try{const file=await csvHandle.getFile();mergeCsv(await file.text());localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render();status('Tapahtumat luettu CSV-tiedostosta.');}
-        catch{status('CSV-tiedoston lukeminen ei onnistunut.');}
-      });
-      $('updateCsv').addEventListener('click',async()=>{if(!csvHandle){status('Valitse ensin olemassa oleva tai luo uusi CSV-tiedosto.');return;}await writeCsv();});
-      $('downloadCsv').addEventListener('click',downloadBackup);
-      $('csvActions').addEventListener('change',e=>{const action=e.target.value;e.target.value='';if(action)$(action).click();});
-      $('monthReport').addEventListener('click',e=>{
-        const link=e.target.closest('.whatsapp-link');if(!link)return;
-        if(window.confirm('Tehdäänkö samalla CSV-varmuuskopio?'))downloadBackup();
-      });
-      async function storeCsvHandle(handle){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('handles','readwrite');tx.objectStore('handles').put(handle,'csv');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();}catch{}}
-      async function restoreCsvHandle(){try{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('koulukyydit-csv-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const handle=await new Promise((resolve,reject)=>{const r=db.transaction('handles','readonly').objectStore('handles').get('csv');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();if(!handle)return;csvHandle=handle;$('activeCsv').value=`${handle.name} (valittu tiedosto; koko levypolkua ei näytetä selaimessa)`;status('Merkinnät ladattu selaimen välimuistista.');}catch{status('Merkinnät ladattu selaimen välimuistista.');}}
       render();
-      restoreCsvHandle();
+
     })();
   </script>
 </body>
