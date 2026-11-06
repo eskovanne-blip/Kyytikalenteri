@@ -143,7 +143,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(F_2.0.14)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div><h1>Koulukyydit <span class="version">(F_2.0.15)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -182,7 +182,7 @@
         <section class="card panel">
           <h2>Parametrit</h2><p class="hint">Henkilön poistaminen piilottaa nimen uusista kirjauksista ja säilyttää aiemmat merkinnät.</p>
           <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
-          <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Suoritetut maksut</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Maksun suorittaja</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi johon suoritus kohdistuu</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><div class="payment-actions"><button class="primary" id="savePayment" type="button">Tallenna saldo</button><button class="secondary" id="cancelPayment" type="button">Peruuta</button><button class="secondary remove-payment" id="removePayment" type="button" hidden>Poista</button><button class="secondary" id="payPayment" type="button">Maksa</button></div></div></div></div>
+          <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Merkitse suoritettuja maksuja</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Maksun suorittaja</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi johon suoritus kohdistuu</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><div class="payment-actions"><button class="primary" id="savePayment" type="button">Tallenna saldo</button><button class="secondary" id="cancelPayment" type="button">Peruuta</button><button class="secondary remove-payment" id="removePayment" type="button" hidden>Poista</button><button class="secondary" id="payPayment" type="button">Maksa</button></div></div></div></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
           <div class="path-row" id="csvFilePathBlock"><label for="activeCsv">Käytössä olevan CSV-tiedoston polku</label><input id="activeCsv" type="text" value="Ei valittua CSV-tiedostoa" readonly aria-live="polite"><p class="hint" style="margin:0">Tiedostonimi näytetään tässä. Selain ei paljasta sivulle paikallisen kansion koko polkua; lukeminen ja tallentaminen käyttävät valittua tiedostoa.</p></div>
@@ -196,7 +196,7 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.14"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.15"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -441,7 +441,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.14'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.15'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
