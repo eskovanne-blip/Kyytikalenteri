@@ -144,7 +144,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.21)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.22)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -195,8 +195,8 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.21"></script>
-  <script src="./calendar-backup.js?v=F_2.0.21"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.22"></script>
+  <script src="./calendar-backup.js?v=F_2.0.22"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -432,11 +432,8 @@
           const paid=monthlyPaid(name,selectedMonth),carry=positiveCarryForward(i,selectedMonth);
           return {name,to,home,driverRides,total:carry+monthlyBalance(i,selectedMonth)+paid,paid,carry};
         });
-        const sentAt = new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(new Date());
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid!==0);
-        const shareLines = [`${title.toLocaleUpperCase('fi-FI')} yhteenveto · lähetetty ${sentAt}`, '', ...activeCounts.map(p=>`*${euro(p.total)}€ ${p.name}* (${p.to} + ${p.home}${p.driverRides?`, kuskina +${p.driverRides}`:''}${p.carry>0?`, +${euro(p.carry)}€ Siirtyy`:''})`)];
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareLines.join('\n'))}`;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2>${activeCounts.length?`<a class="whatsapp-link" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Lähetä WhatsAppilla</a>`:''}</div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>S</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(Math.abs(p.paid))}€</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vaikuttaa saldoon maksusuunnan mukaan.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2></div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Maksettu</th><th>S</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${euro(Math.abs(p.paid))}€</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. Maksettu summa vaikuttaa saldoon maksusuunnan mukaan.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
         window.clearMonthImages?.();
         const pdfActions=document.createElement('div');
         pdfActions.className='share-actions';
@@ -445,13 +442,13 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.21'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.22'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
         });
         const imageButton=document.createElement('button');
-        imageButton.type='button';imageButton.className='secondary';imageButton.textContent='Tee kuva / jaa WhatsAppiin';
+        imageButton.type='button';imageButton.className='primary';imageButton.textContent='Lähetä yhteenveto';
         const imagePanel=document.createElement('div');
         let imageUrls=[];
         window.clearMonthImages=()=>{imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];};
@@ -459,7 +456,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({title,calendarName:$('headerHouseholdName').textContent,month,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.21'});
+            const files=await window.createCalendarImages({title,calendarName:$('headerHouseholdName').textContent,month,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.22'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -489,7 +486,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.21');
+          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.22');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
