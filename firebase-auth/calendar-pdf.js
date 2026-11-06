@@ -21,19 +21,47 @@
     }
     function newPage(){pdf.addPage();header(true);}
     function tableLayout(rows,widths,font,padding) {
-      pdf.setFont('helvetica','normal');pdf.setFontSize(font);
-      return rows.map(row=>{const cells=row.map((cell,i)=>pdf.splitTextToSize(clean(cell),widths[i]-padding*2));return {cells,height:Math.max(...cells.map(c=>c.length))*font*.352778*1.15+padding*2};});
+      pdf.setFontSize(font);
+      return rows.map((row,rowIndex)=>{
+        const cells=row.map((cell,i)=>{
+          const runs=Array.isArray(cell)?cell:[{text:cell,bold:false}],maxWidth=widths[i]-padding*2;
+          const lines=[[]];let used=0;
+          for(const run of runs){
+            const bold=rowIndex===0||run.bold;
+            pdf.setFont('helvetica',bold?'bold':'normal');
+            for(let word of clean(run.text).match(/\S+\s*|\s+/g)||[]){
+              if(used&&used+pdf.getTextWidth(word.trimEnd())>maxWidth){lines.push([]);used=0;word=word.trimStart();}
+              // Split exceptionally long names too, without dropping characters.
+              for(const char of word){
+                const charWidth=pdf.getTextWidth(char);
+                if(used&&used+charWidth>maxWidth){lines.push([]);used=0;}
+                if(!used&&/\s/.test(char))continue;
+                const line=lines[lines.length-1],last=line[line.length-1];
+                if(last&&last.bold===bold)last.text+=char;else line.push({text:char,bold});
+                used+=charWidth;
+              }
+            }
+          }
+          return lines;
+        });
+        return {cells,height:Math.max(...cells.map(c=>c.length))*font*.352778*1.15+padding*2};
+      });
     }
     function table(rows,widths,font=8,padding=1.5) {
       const layout=tableLayout(rows,widths,font,padding);
       function draw(row,index,isHeader=false){
         pdf.setFillColor(...(isHeader?[232,243,237]:index%2?[247,249,248]:[255,255,255]));pdf.rect(left,y,width,row.height,'F');
-        let x=left;row.cells.forEach((lines,i)=>{text(lines,x+padding,y+padding,font,isHeader,isHeader?green:ink);x+=widths[i];});
+        let x=left;row.cells.forEach((lines,i)=>{
+          lines.forEach((runs,lineIndex)=>{let runX=x+padding;runs.forEach(run=>{
+            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,font,run.bold,isHeader?green:ink);
+            runX+=pdf.getTextWidth(run.text);
+          });});x+=widths[i];
+        });
         y+=row.height;pdf.setDrawColor(220,229,224);pdf.setLineWidth(.15);pdf.line(left,y,left+width,y);
       }
       layout.forEach((row,index)=>{if(y+row.height>bottom){newPage();if(index>0)draw(layout[0],0,true);}draw(row,index,index===0);});
     }
-    header();heading('Henkilökohtainen yhteenveto');
+    header();heading('Maksutiedot');
     const summaryRows=[['Henkilö','A / I / K','Maksettu','Siirtynyt','Saldo'],...summary.map(p=>[p.name,`${p.to} / ${p.home} / ${p.driverRides}`,euro(p.paid),euro(p.carry),money(p.total)])];
     table(summaryRows,[43,23,30,30,60],8,1.4);
     if(!summary.length){text('Ei kyytejä tai maksuja tässä kuussa.',left,y+2,8);y+=6;}
@@ -45,7 +73,8 @@
       const direction=way=>{
         const names=(Array.isArray(entry[way])?entry[way]:[]).map(i=>people[i]).filter(v=>v!==undefined);
         const relevant=notes.filter(n=>way==='to'?!n.endsWith(' ajoi illalla'):!n.endsWith(' ajoi aamulla'));
-        return [...names,...relevant].join('; ')||'-';
+        const runs=[...names.map(name=>({text:name,bold:false})),...relevant.map(note=>({text:note,bold:true}))];
+        return runs.length?runs.flatMap((run,i)=>i?[{text:'; ',bold:false},run]:[run]):[{text:'-',bold:false}];
       };
       return [[new Intl.DateTimeFormat('fi-FI',{weekday:'short',day:'numeric',month:'numeric'}).format(new Date(date+'T12:00:00')),direction('to'),direction('home')]];
     });
