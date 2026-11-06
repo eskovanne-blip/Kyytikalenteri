@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.20` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.21` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Varmuuskopio data
 
@@ -28,6 +28,8 @@ Hyväksytty palautus korvaa kalenterin henkilöt, päivämerkinnät, maksut ja h
 Kuukausiyhteenvedon alareunan **Tee PDF** lataa valitun kuukauden A4-pystyraportin. Raportissa näkyvät samat maksut ja saldot kuin kuukausiyhteenvedossa sekä päivien henkilöt ja merkinnät aamu- ja iltasarakkeissa. Päivät ilman merkintöjä jätetään pois. Päivätaulukko tiivistyy tarvittaessa: tavallinen 20 koulupäivän kuukausi mahtuu yhdelle sivulle. Poikkeuksellisen pitkä sisältö jatkuu lisäsivuille ilman tietojen poisjättämistä. Koko päivälle tallennetut merkinnät näytetään molemmissa sarakkeissa.
 
 PDF luodaan selaimessa paikallisesti kirjastolla jsPDF 4.2.1 (`vendor/jspdf.umd.min.js`, MIT-lisenssi tiedostossa `vendor/jspdf-LICENSE.txt`). Raporttitietoja ei lähetetä PDF-palveluun.
+
+**Tee kuva / jaa WhatsAppiin** muodostaa samasta raporttipohjasta 1680 × 2376 pikselin PNG-kuvan jokaiselle A4-sivulle. Esikatselun **Jaa kuva** avaa tiedostojen jakamista tukevan selaimen jakovalikon, josta käyttäjä valitsee WhatsAppin ja vastaanottajan. Kuvan voi aina tallentaa myös PNG-tiedostona ja liittää viestiin itse. Kuvan muodostus tapahtuu paikallisesti selaimessa.
 
 Sovellus käyttää Firebase-projektia `kyytikalenteri-auth`, sähköposti- ja salasanakirjautumista sekä Firestore-tietokantaa alueella `europe-north1`. Käyttäjän on vahvistettava sähköpostiosoitteensa ennen kalenteriin liittymistä. Uuden kalenterin luonti on estetty.
 

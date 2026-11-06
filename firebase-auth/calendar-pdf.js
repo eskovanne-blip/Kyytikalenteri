@@ -1,8 +1,9 @@
 /* PDF layout uses millimetres on A4 portrait. No calendar data leaves the browser. */
 (function(root) {
   'use strict';
-  root.createCalendarPdf = function({title, calendarName, month, people, trips, summary, version, generatedAt=new Date()}) {
+  root.createCalendarPdf = function({title, calendarName, month, people, trips, summary, version, generatedAt=new Date(), prepareDocument}) {
     const pdf = new root.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    if(prepareDocument)prepareDocument(pdf);
     const euro = n => Number(n).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const clean = value => String(value ?? '').replace(/[\u0000-\u001f]/g,' ').replace(/\u2212/g,'-');
     const money = value => Number(value)<0 ? 'Maksettavaa '+euro(-value) : Number(value)>0 ? 'Hyvitystä '+euro(value) : euro(0);
@@ -89,5 +90,42 @@
     for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setDrawColor(220,229,224);pdf.line(left,285,left+width,285);text('Koulukyydit | '+clean(version),left,288,7,false,muted);text(`${i} / ${pages}`,188,288,7,false,muted);}
     pdf.setProperties({title:'Koulukyydit - '+clean(title),subject:'Kuukausiyhteenveto ja päiväkohtaiset merkinnät',creator:'Koulukyydit '+version});
     return pdf;
+  };
+
+  // Mirror the PDF drawing commands; the PDF still determines wrapping and pagination.
+  root.createCalendarImages = async function(options) {
+    const pages=[],scale=8;
+    let context,fontSize=8,bold=false,textColor='rgb(32,43,40)',fillColor='#fff',drawColor='#ddd',lineWidth=.15;
+    function page() {
+      const canvas=document.createElement('canvas');canvas.width=210*scale;canvas.height=297*scale;
+      context=canvas.getContext('2d');if(!context)throw new Error('Kuvan luonti ei onnistu tässä selaimessa.');
+      context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.scale(scale,scale);pages.push(canvas);
+    }
+    root.createCalendarPdf({...options,prepareDocument(pdf){
+      page();
+      const mirror=(name,draw)=>{const original=pdf[name];pdf[name]=function(...args){const result=original.apply(this,args);draw(...args);return result;};};
+      mirror('addPage',page);
+      mirror('setPage',number=>{context=pages[number-1].getContext('2d');});
+      mirror('setFont',(_family,style)=>{bold=style==='bold';});
+      mirror('setFontSize',size=>{fontSize=size;});
+      mirror('setTextColor',(...rgb)=>{textColor=`rgb(${rgb.join(',')})`;});
+      mirror('setFillColor',(...rgb)=>{fillColor=`rgb(${rgb.join(',')})`;});
+      mirror('setDrawColor',(...rgb)=>{drawColor=`rgb(${rgb.join(',')})`;});
+      mirror('setLineWidth',width=>{lineWidth=width;});
+      mirror('text',(value,x,y)=>{
+        context.font=`${bold?'bold':'normal'} ${fontSize*25.4/72}px Arial, Helvetica, sans-serif`;
+        context.textBaseline='top';context.fillStyle=textColor;context.fillText(value,x,y);
+      });
+      mirror('rect',(x,y,width,height)=>{context.fillStyle=fillColor;context.fillRect(x,y,width,height);});
+      mirror('line',(x1,y1,x2,y2)=>{context.strokeStyle=drawColor;context.lineWidth=lineWidth;context.beginPath();context.moveTo(x1,y1);context.lineTo(x2,y2);context.stroke();});
+    }});
+    const files=[];
+    for(let i=0;i<pages.length;i++){
+      const canvas=pages[i];
+      const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('PNG-kuvan luonti epäonnistui.')),'image/png'));
+      files.push(new File([blob],`Koulukyydit_${options.month}${pages.length>1?'_'+(i+1):''}.png`,{type:'image/png'}));
+      canvas.width=canvas.height=0;
+    }
+    return files;
   };
 })(typeof window!=='undefined'?window:globalThis);
