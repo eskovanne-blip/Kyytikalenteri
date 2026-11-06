@@ -12,13 +12,14 @@
     body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif }
     button,input { font:inherit }
     button { cursor:pointer }
-    .shell { width:100%; max-width:none; padding:24px 14px 60px; margin:0 }
-    header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:25px }
+    .shell { width:100%; max-width:none; padding:12px 14px 60px; margin:0 }
+    .page-header { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:4px 16px; margin-bottom:14px }
+    .header-main { min-width:0 }
     .header-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end }
-    .account-row { display:flex; align-items:center; gap:9px; margin-top:9px; color:var(--muted); font-size:13px; flex-wrap:wrap }
+    .account-row { display:flex; align-items:center; gap:8px; margin-top:3px; color:var(--muted); font-size:13px; min-width:0 }
     .account-row[hidden] { display:none }
-    .account-row strong { color:var(--ink); font-weight:650 }
-    .account-row button { padding:5px 9px; font-size:12px }
+    .account-row strong { color:var(--ink); font-weight:650; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    .account-row button { flex:none; white-space:nowrap; padding:6px 9px; font-size:12px; min-height:36px }
     .member-list { display:grid; gap:6px; margin-top:8px }
     .member-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:12px }
     .member-details { min-width:0; overflow-wrap:anywhere }
@@ -27,10 +28,9 @@
     .auth-invite-form { display:grid; gap:8px; margin-top:12px }
     .auth-invite-form[hidden] { display:none }
     .auth-invite-form input { width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:#fff; color:var(--ink) }
-    .save-state { min-height:18px; color:var(--muted); font-size:12px; text-align:right; margin-top:6px }
-    h1 { font-size:clamp(26px,4vw,36px); letter-spacing:-.04em; margin:0 0 5px }
+    .save-state { color:var(--muted); font-size:11px; line-height:1.3; text-align:right; max-width:40ch; overflow-wrap:anywhere }
+    h1 { font-size:clamp(24px,4vw,32px); line-height:1.15; letter-spacing:-.04em; margin:0 }
     .version { display:inline-block; font-size:.48em; font-weight:600; letter-spacing:0; vertical-align:middle; white-space:nowrap }
-    .subtitle { margin:0; color:var(--muted) }
     .layout { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:18px; align-items:start }
     .card { background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px #17362908 }
     .calendar-card { overflow:hidden }
@@ -136,14 +136,14 @@
     .report-empty { color:var(--muted); font-size:13px; margin:0 }
     footer { color:var(--muted); font-size:12px; text-align:center; margin-top:19px }
     @media(max-width:850px) { .layout { grid-template-columns:1fr } .sidebar { grid-template-columns:1fr 1fr } .day { min-height:90px } }
-    @media(max-width:560px) { .shell { padding:24px 12px 40px } header { margin-bottom:17px } .sidebar { grid-template-columns:1fr } .cal-head { padding:14px } .days { padding:4px 7px 10px; gap:2px } .weekdays { padding:8px 7px 0 } .day { min-height:69px; border-radius:7px; padding:5px 3px; font-size:13px } .trip-preview { margin-top:4px; font-size:9px } .trip-preview span { margin-top:2px } .count { font-size:9px; padding:1px 4px } .month-label { min-width:150px; font-size:18px } .legend { padding:0 14px 13px } }
+    @media(max-width:560px) { .shell { padding:8px 12px 40px } .page-header { grid-template-columns:minmax(0,1fr); gap:3px; margin-bottom:10px } .save-state { max-width:none; text-align:left } .sidebar { grid-template-columns:1fr } .cal-head { padding:14px } .days { padding:4px 7px 10px; gap:2px } .weekdays { padding:8px 7px 0 } .day { min-height:69px; border-radius:7px; padding:5px 3px; font-size:13px } .trip-preview { margin-top:4px; font-size:9px } .trip-preview span { margin-top:2px } .count { font-size:9px; padding:1px 4px } .month-label { min-width:150px; font-size:18px } .legend { padding:0 14px 13px } }
   </style>
 </head>
 <body>
   <main class="shell">
-    <header>
-      <div><h1>Koulukyydit <span class="version">(F_2.0.17)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
-      <div><div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div></div>
+    <header class="page-header">
+      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.18)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
       <h2 id="authTitle">Kirjaudu sisään</h2>
@@ -193,8 +193,8 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.17"></script>
-  <script src="./calendar-backup.js?v=F_2.0.17"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.18"></script>
+  <script src="./calendar-backup.js?v=F_2.0.18"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -427,7 +427,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.17'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.18'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -438,7 +438,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.17');
+          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.18');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);

@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.17` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.18` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Varmuuskopio data
 
