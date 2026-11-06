@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.12` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.13` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 Kuukausiyhteenvedon alareunan **Tee PDF** lataa valitun kuukauden A4-pystyraportin. Raportissa näkyvät samat maksut ja saldot kuin kuukausiyhteenvedossa sekä päivien henkilöt ja merkinnät aamu- ja iltasarakkeissa. Päivät ilman merkintöjä jätetään pois. Päivätaulukko tiivistyy tarvittaessa: tavallinen 20 koulupäivän kuukausi mahtuu yhdelle sivulle. Poikkeuksellisen pitkä sisältö jatkuu lisäsivuille ilman tietojen poisjättämistä. Koko päivälle tallennetut merkinnät näytetään molemmissa sarakkeissa.
 

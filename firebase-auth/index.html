@@ -143,7 +143,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><h1>Koulukyydit <span class="version">(F_2.0.12)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div><h1>Koulukyydit <span class="version">(F_2.0.13)</span></h1><p class="subtitle">Firebase-versio · <span id="headerHouseholdName">Yhteinen kalenteri</span></p><div class="account-row" id="signedInRow" hidden><span>Kirjautunut:</span><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div><div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi perheen kalenteria</div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -195,8 +195,8 @@
     <footer>Tiedot tallentuvat automaattisesti perheen yhteiseen Firebase-kalenteriin.</footer>
     </div>
   </main>
-  <script src="./vendor/jspdf.umd.min.js"></script>
-  <script src="./calendar-pdf.js"></script>
+  <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.13"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -441,7 +441,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.12'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.13'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
