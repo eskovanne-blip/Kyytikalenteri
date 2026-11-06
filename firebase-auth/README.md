@@ -1,10 +1,14 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.19` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.20` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Varmuuskopio data
 
-Parametrit-osiossa omistaja tai ylläpitäjä voi valita **Tee CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä jäsenyydet suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. Vanhat CSV-tiedoston avaamisen toiminnot ja paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
+Parametrit-osiossa jokainen aktiivinen kalenterin käyttäjä voi valita **Tee CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä sallitut jäsenyystiedot suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. Vanhat CSV-tiedoston avaamisen toiminnot, paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
+
+CSV-latauksen käynnistyttyä sen ajankohta tallennetaan palvelimen aikaleimalla kalenterin yhteiseen `households/{tunnus}/state/backup`-asiakirjaan (`lastBackupAt`, `lastBackupBy`). Parametreissa näkyy viimeisin kirjattu ajankohta. Tieto ei riipu selaimen paikallisesta muistista eikä katoa CSV-palautuksessa. Selain ei voi varmistaa, onko ladattu tiedosto lopulta tallennettu levylle; aikaleima tarkoittaa latauksen käynnistämistä. Jos aikaleiman tallennus epäonnistuu, käyttäjälle näytetään ilmoitus ja muistutus jää voimaan.
+
+Kaikille aktiivisille käyttäjille kysytään varmuuskopiota, kun edellisestä on kulunut yli 30 vuorokautta. Jos ajankohtaa ei vielä ole, kysytään ensimmäisen kirjatun kopion tekemistä. Peruuttamisen jälkeen samalta käyttäjältä kysytään samassa selainistunnossa aikaisintaan seuraavana päivänä. Tilanne tarkistetaan kirjautumisen jälkeen, sivulle palattaessa ja tunnin välein. Tuore yhteinen varmuuskopio kuittaa muistutuksen kaikilta käyttäjiltä.
 
 CSV:n merkistö on UTF-8 (BOM), rivinvaihto CRLF ja sarakkeet ovat alkuperäiset `type,date,direction,person`. Alkuperäiset `parameter`, `saldo`, `person`, `trip` ja `note` -rivit säilyvät samassa muodossa, mukaan lukien hintahistoria, maksun etumerkki ja käytöstä poistetut henkilöt. `parameter,version` säilyttää alkuperäisen CSV-muodon version `1.1.22`.
 
@@ -12,10 +16,10 @@ Lisätietueet käyttävät samoja neljää saraketta:
 
 | type | date | direction | person |
 | --- | --- | --- | --- |
-| `calendar` | Kalenterin tunnus | `metadata` | JSON: `id`, `name`, `ownerUid`, `exportedAt`, `appVersion` |
+| `calendar` | Kalenterin tunnus | `metadata` | JSON: `id`, `name`, `ownerUid`, `memberScope`, `exportedAt`, `appVersion` |
 | `member` | Firebase Auth UID | Rooli (`owner`, `admin`, `member`) | JSON: `email`, `active`, `joinedAt` |
 
-Mukana ovat kaikki kalenterin Firestore-jäsenyydet, myös passiiviset. Nämä kuvaavat kalenterin käyttöoikeuksia, eivät Firebase-projektin kaikkien Auth-tilien luetteloa. Salasanoja, salaisia kirjautumis- tai istuntotunnisteita tai kutsukoodeja ei viedä. Käyttäjäluettelon lukeminen edellyttää nykyisten Firestore-sääntöjen mukaisia ylläpitäjän oikeuksia. Vanha CSV-lukija voi käsitellä kalenterimerkinnät ja ohittaa uudet tietuetyypit; Auth-tilejä ei voi palauttaa tällä CSV:llä.
+Omistajan ja pääkäyttäjän (`admin`) varmuuskopiossa ovat kaikki kalenterin Firestore-jäsenyydet, myös passiiviset (`memberScope: all`). Tavallisen käyttäjän kopiossa ovat kaikki kalenteritiedot sekä vain oma jäsenyys (`memberScope: self`). Ero näytetään käyttöliittymässä. Näin käyttäjäluettelon nykyiset lukuoikeudet säilyvät. Jäsenyydet kuvaavat kalenterin käyttöoikeuksia, eivät Firebase-projektin kaikkien Auth-tilien luetteloa. Salasanoja, salaisia kirjautumis- tai istuntotunnisteita tai kutsukoodeja ei viedä. Vanha CSV-lukija voi käsitellä kalenterimerkinnät ja ohittaa uudet tietuetyypit; Auth-tilejä ei voi palauttaa tällä CSV:llä.
 
 **Palauta CSV-varmuuskopio** on varmuuskopion tekemisen napin alapuolella. Omistaja tai ylläpitäjä valitsee CSV-tiedoston (enintään 5 Mt). Tiedosto tarkistetaan ja vahvistuskysymyksessä näytetään lähde- ja kohdekalenteri, henkilöiden, päivien ja maksujen määrät sekä päivämerkintöjen ajanjakso. **Peruuta** keskeyttää muuttamatta tietoja.
 

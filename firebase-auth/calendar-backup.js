@@ -7,14 +7,45 @@
     if(!user?.emailVerified||!calendarId||!stateRef)throw new Error('Kirjaudu kalenteriin ennen varmuuskopiointia.');
     await pendingWrites;
     const own=await readDocument(memberRef);
-    if(!own.exists()||!own.data().active||!['owner','admin'].includes(own.data().role))throw new Error('Varmuuskopiointi vaatii omistajan tai ylläpitäjän oikeudet.');
-    const [state,calendar,members]=await Promise.all([readDocument(stateRef),readDocument(calendarRef),readMembers()]);
+    if(!own.exists()||!own.data().active)throw new Error('Varmuuskopiointi vaatii aktiivisen kalenterijäsenyyden.');
+    const membersComplete=['owner','admin'].includes(own.data().role);
+    const [state,calendar,members]=await Promise.all([readDocument(stateRef),readDocument(calendarRef),membersComplete?readMembers():Promise.resolve({docs:[{id:user.uid,data:()=>own.data()}]})]);
     if(!isCurrent())throw new Error('Kirjautuminen tai kalenteri vaihtui. Yritä uudelleen.');
     if(!state.exists()||!state.data().payload||!calendar.exists())throw new Error('Kalenterin tietoja ei löytynyt tietokannasta. Varmuuskopiota ei luotu.');
-    return {userUid:user.uid,payload:state.data().payload,calendar:{id:calendarId,name:calendar.data().name||'',ownerUid:calendar.data().ownerUid||''},members:members.docs.map(member=>{
+    return {userUid:user.uid,membersComplete,payload:state.data().payload,calendar:{id:calendarId,name:calendar.data().name||'',ownerUid:calendar.data().ownerUid||'',memberScope:membersComplete?'all':'self'},members:members.docs.map(member=>{
       const value=member.data();
       return {uid:member.id,email:value.email||'',role:value.role||'',active:value.active===true,joinedAt:timestamp(value.joinedAt)};
     })};
+  };
+
+  root.calendarBackupIsOverdue = function(lastBackupAt,now=Date.now()) {
+    const time=lastBackupAt?.toMillis?lastBackupAt.toMillis():lastBackupAt?Date.parse(lastBackupAt):NaN;
+    return !Number.isFinite(time)||now-time>30*24*60*60*1000;
+  };
+
+  root.createBackupReminder = function({confirm,makeBackup,storage,now=()=>new Date()}) {
+    let current=null,busy=false;const seen=new Map();
+    return {
+      clear(){current=null;},
+      async update({calendarId,userUid,lastBackupAt}) {
+        current={calendarId,userUid,lastBackupAt};
+        const date=now(),rawStamp=timestamp(lastBackupAt);
+        const stamp=rawStamp&&Number.isFinite(Date.parse(rawStamp))?rawStamp:null;
+        if(busy||!root.calendarBackupIsOverdue(lastBackupAt,date.getTime()))return;
+        // Dismissal applies to this user, calendar and backup date for one day.
+        const key='backup-reminder:'+userUid+':'+calendarId;
+        const value=date.toLocaleDateString('sv-SE')+'|'+(stamp||'never');
+        if(seen.get(key)===value)return;
+        try{if(storage.getItem(key)===value)return;storage.setItem(key,value);}catch{}
+        seen.set(key,value);
+        busy=true;
+        try {
+          const message=stamp?'Kalenterin varmuuskopiota ei ole otettu yli 30 päivään. Tehdäänkö CSV-varmuuskopio nyt?':'Kalenterille ei ole vielä kirjattu varmuuskopiota. Tehdäänkö CSV-varmuuskopio nyt?';
+          if(confirm(message)&&current?.calendarId===calendarId&&current?.userUid===userUid)await makeBackup();
+        } finally {busy=false;}
+      },
+      async check(){if(current)await this.update(current);}
+    };
   };
 
   root.parseCalendarBackupCsv = function(input) {

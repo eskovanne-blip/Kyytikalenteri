@@ -144,7 +144,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.19)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.20)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -186,7 +186,7 @@
           <div class="path-row"><button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false">Merkitse suoritettuja maksuja</button><div class="payment-panel" id="paymentPanel" hidden><label for="paymentPerson">Maksun suorittaja</label><select id="paymentPerson"><option value="" selected disabled>Valitse henkilö</option></select><div id="paymentMonthGroup" hidden><label for="paymentMonth">Kuukausi johon suoritus kohdistuu</label><select id="paymentMonth"></select></div><div id="paymentAmountGroup" hidden><label for="paymentAmount">Summa (€)</label><input id="paymentAmount" type="number" min="0" step="0.01" inputmode="decimal"><div class="payment-actions"><button class="primary" id="savePayment" type="button">Tallenna saldo</button><button class="secondary" id="cancelPayment" type="button">Peruuta</button><button class="secondary remove-payment" id="removePayment" type="button" hidden>Poista</button><button class="secondary" id="payPayment" type="button">Maksa</button></div></div></div></div>
           <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
           <div class="people" id="people"></div>
-          <div class="path-row"><h3 style="margin:10px 0 4px">Varmuuskopio data</h3><p class="hint" id="backupHint" style="margin:0">Omistaja tai ylläpitäjä voi ladata kalenteritiedot ja kalenterin käyttäjät CSV-tiedostoon.</p><button class="secondary" id="backupData" type="button" disabled>Tee CSV-varmuuskopio</button><button class="secondary" id="restoreData" type="button" disabled>Palauta CSV-varmuuskopio</button><input id="restoreBackupFile" type="file" accept=".csv,text/csv" hidden><p class="hint" id="backupStatus" role="status" style="margin:0"></p></div>
+          <div class="path-row"><h3 style="margin:10px 0 4px">Varmuuskopio data</h3><p class="hint" id="backupHint" style="margin:0">Jokainen käyttäjä voi kopioida kalenteritiedot ja oman jäsenyytensä. Pääkäyttäjän kopio sisältää kaikki jäsenyydet. Palautus on vain omistajalle tai pääkäyttäjälle.</p><p class="hint" id="lastBackupInfo" style="margin:0">Viimeisin varmuuskopio: tarkistetaan…</p><button class="secondary" id="backupData" type="button" disabled>Tee CSV-varmuuskopio</button><button class="secondary" id="restoreData" type="button" disabled>Palauta CSV-varmuuskopio</button><input id="restoreBackupFile" type="file" accept=".csv,text/csv" hidden><p class="hint" id="backupStatus" role="status" style="margin:0"></p></div>
         </section>
         <section class="card panel" id="userManagement" hidden aria-labelledby="userManagementTitle"><h2 id="userManagementTitle">Käyttäjät</h2><p class="hint">Luo kutsukoodeja ja hallitse kalenterin jäseniä.</p><div class="path-row"><button class="secondary" id="createInvite" type="button">Luo kutsukoodi</button><span id="inviteResult" class="hint" style="margin:0"></span></div><div class="member-list" id="memberList"></div><span id="memberManagementStatus" class="hint" style="margin:0"></span></section>
       </aside>
@@ -195,15 +195,15 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.19"></script>
-  <script src="./calendar-backup.js?v=F_2.0.19"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.20"></script>
+  <script src="./calendar-backup.js?v=F_2.0.20"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
     import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, getDocFromServer, getDocsFromServer, runTransaction, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
     const firebaseApp = initializeApp({apiKey:'AIzaSyDE6LNqHnV_MHzJxDcBsKkjT1Ye3ZH2jBQ',authDomain:'kyytikalenteri-auth.firebaseapp.com',projectId:'kyytikalenteri-auth',storageBucket:'kyytikalenteri-auth.firebasestorage.app',messagingSenderId:'274160528683',appId:'1:274160528683:web:315c3073bf18b9ba8fa96e'});
     const auth = getAuth(firebaseApp), firestore = getFirestore(firebaseApp);
-    let currentUser = null, householdId = null, remoteStateRef = null, stopSync = null;
+    let currentUser = null, householdId = null, remoteStateRef = null, stopSync = null, stopBackupSync = null;
     const authMessage = text => { document.getElementById('authMessage').textContent = text; };
     const authError = error => { const messages={'auth/invalid-email':'Sähköpostiosoite ei ole kelvollinen. Tarkista osoite ja yritä uudelleen.','auth/email-already-in-use':'Tälle sähköpostiosoitteelle on jo käyttäjätili. Kirjaudu sisään.','auth/weak-password':'Salasana on liian heikko. Käytä vähintään 8 merkkiä.','auth/operation-not-allowed':'Sähköposti- ja salasanakirjautuminen ei ole käytössä Firebase-projektissa.','auth/too-many-requests':'Liian monta yritystä. Odota hetki ja yritä uudelleen.','auth/network-request-failed':'Yhteys Firebaseen epäonnistui. Tarkista verkkoyhteys.','permission-denied':'Firestore esti pyynnön käyttöoikeussäännön perusteella. Kirjaudu uudelleen tai pyydä kalenterin omistajaa tarkistamaan jäsenyys.'}; const message=error?.message==='Kutsukoodi ei ole voimassa tälle sähköpostiosoitteelle.'?error.message:(messages[error?.code] || `Toiminto ei onnistunut (${error?.code||'tuntematon virhe'}). Tarkista tiedot ja yritä uudelleen.`); authMessage(message); const householdMessage=document.getElementById('householdMessage'); if(householdMessage)householdMessage.textContent=message; };
     const appPanel = document.getElementById('calendarApp');
@@ -227,6 +227,18 @@
         readDocument:getDocFromServer,readMembers:()=>getDocsFromServer(collection(firestore,'households',id,'members')),
         isCurrent:()=>currentUser?.uid===user?.uid&&householdId===id&&remoteStateRef===ref});
     };
+    window.firebaseRecordBackup = async snapshot => {
+      if(!currentUser||currentUser.uid!==snapshot.userUid||householdId!==snapshot.calendar.id)throw new Error('Kirjautuminen tai kalenteri vaihtui.');
+      await setDoc(doc(firestore,'households',snapshot.calendar.id,'state','backup'),{lastBackupAt:serverTimestamp(),lastBackupBy:snapshot.userUid},{merge:true});
+    };
+    function watchBackupReminder() {
+      if(stopBackupSync)stopBackupSync();
+      const id=householdId,uid=currentUser?.uid;
+      stopBackupSync=onSnapshot(doc(firestore,'households',id,'state','backup'),{includeMetadataChanges:true},snapshot=>{
+        if(snapshot.metadata.hasPendingWrites||snapshot.metadata.fromCache||householdId!==id||currentUser?.uid!==uid)return;
+        window.updateBackupReminder?.({calendarId:id,userUid:uid,lastBackupAt:snapshot.exists()?snapshot.data().lastBackupAt:null});
+      },()=>{document.getElementById('lastBackupInfo').textContent='Varmuuskopion ajankohdan tarkistus epäonnistui.';});
+    }
     window.firebaseRestoreCalendar = async (payload,expected) => {
       const user=currentUser,id=householdId,ref=remoteStateRef;
       await window.restoreCalendarBackup({payload,expected,user,calendarId:id,stateRef:ref,
@@ -241,15 +253,17 @@
       if(!householdId||!currentUser){section.hidden=true;return;}
       try {
         const own=await getDoc(doc(firestore,'households',householdId,'members',currentUser.uid));
-        if(!own.exists()||!['owner','admin'].includes(own.data().role)){section.hidden=true;return;}
-        document.getElementById('backupData').disabled=false; document.getElementById('restoreData').disabled=false;
+        if(!own.exists()||!own.data().active){section.hidden=true;return;}
+        document.getElementById('backupData').disabled=false;
+        if(!['owner','admin'].includes(own.data().role)){section.hidden=true;return;}
+        document.getElementById('restoreData').disabled=false;
         section.hidden=false; list.innerHTML='<div class="hint">Ladataan käyttäjiä…</div>'; status.textContent='';
         const members=await getDocs(collection(firestore,'households',householdId,'members'));
         list.innerHTML=members.empty?'<div class="hint">Kalenteriin ei ole vielä lisätty muita käyttäjiä.</div>':members.docs.map(member=>{const value=member.data(),isSelf=member.id===currentUser.uid,role=value.role==='owner'?'Omistaja':value.role==='admin'?'Ylläpitäjä':'Jäsen',state=value.active?'':' · poistettu käytöstä';return `<div class="member-row"><div class="member-details"><div>${escapeHtml(value.email||'Tuntematon käyttäjä')}${isSelf?' (sinä)':''}</div><div class="member-role">${role}${state}</div></div>${isSelf?'':`<button class="member-remove" type="button" data-remove-member="${escapeHtml(member.id)}" data-member-email="${escapeHtml(value.email||'')}">Poista</button>`}</div>`;}).join('');
       } catch(error) { section.hidden=false; list.innerHTML=''; status.textContent=`Käyttäjien lataus epäonnistui: ${error?.code||error?.message||'tuntematon virhe'}`; }
     }
-    async function attachHousehold(id) { householdId=id; localStorage.setItem('firebase-household-id',id); const householdSnap=await getDoc(doc(firestore,'households',id)); document.getElementById('headerHouseholdName').textContent=householdSnap.exists()?householdSnap.data().name:'Yhteinen kalenteri'; remoteStateRef=doc(firestore,'households',id,'state','calendar'); const snap=await getDoc(remoteStateRef); if(snap.exists()&&snap.data().payload&&sessionStorage.getItem('firebase-calendar-loaded')!==id){ localStorage.setItem('koulukyytikalenteri-v1',JSON.stringify(snap.data().payload)); sessionStorage.setItem('firebase-calendar-loaded',id); location.reload(); return; } if(!snap.exists()) await window.firebasePersistCalendar(JSON.parse(localStorage.getItem('koulukyytikalenteri-v1')||'{}')); if(stopSync)stopSync(); stopSync=onSnapshot(remoteStateRef,remote=>{ if(!remote.exists()||remote.metadata.hasPendingWrites)return; const payload=remote.data().payload; if(payload)window.applyFirebaseCalendar?.(payload); }); appPanel.hidden=false; document.getElementById('householdSetup').hidden=true; await refreshUserManagement(); }
-    onAuthStateChanged(auth, async user => { currentUser=user; document.getElementById('backupData').disabled=true; document.getElementById('restoreData').disabled=true; document.getElementById('backupStatus').textContent=''; appPanel.hidden=true; document.getElementById('householdSetup').hidden=true; document.getElementById('userManagement').hidden=true; document.getElementById('headerUserEmail').textContent=user?.email||''; document.getElementById('signedInRow').hidden=!user?.email; if(!user){document.getElementById('authPanel').hidden=false;document.getElementById('authForm').hidden=false;document.getElementById('showInviteSignup').hidden=false;document.getElementById('inviteSignupForm').hidden=true;document.getElementById('authTitle').textContent='Kirjaudu sisään';document.getElementById('headerHouseholdName').textContent='Yhteinen kalenteri';authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenteriin voi liittyä vain voimassa olevalla kutsukoodilla.');return;} document.getElementById('authForm').hidden=true;document.getElementById('showInviteSignup').hidden=true;document.getElementById('inviteSignupForm').hidden=true; if(!user.emailVerified){document.getElementById('authPanel').hidden=false;document.getElementById('authTitle').textContent='Vahvista sähköposti';authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');return;} document.getElementById('authPanel').hidden=true; try { const pending=JSON.parse(localStorage.getItem('kyytikalenteri-pending-invite')||'null'); if(pending&&pending.email===String(user.email||'').toLowerCase()){await acceptInvite(pending.householdId,pending.code);return;} const remembered=localStorage.getItem('firebase-household-id'); if(remembered){ const membership=await getDoc(doc(firestore,'households',remembered,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(remembered);return;} if(remembered===user.uid){await setDoc(doc(firestore,'households',remembered,'members',user.uid),{email:user.email,role:'owner',active:true,joinedAt:serverTimestamp()});await attachHousehold(remembered);return;} } const membership=await getDoc(doc(firestore,'households',user.uid,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(user.uid);return;} document.getElementById('householdSetup').hidden=false;document.getElementById('householdMessage').textContent='Et ole vielä kalenterin jäsen. Liity kutsukoodilla tai pyydä kutsu ylläpitäjältä.'; } catch(error) { authError(error); } });
+    async function attachHousehold(id) { householdId=id; localStorage.setItem('firebase-household-id',id); const householdSnap=await getDoc(doc(firestore,'households',id)); document.getElementById('headerHouseholdName').textContent=householdSnap.exists()?householdSnap.data().name:'Yhteinen kalenteri'; remoteStateRef=doc(firestore,'households',id,'state','calendar'); const snap=await getDoc(remoteStateRef); if(snap.exists()&&snap.data().payload&&sessionStorage.getItem('firebase-calendar-loaded')!==id){ localStorage.setItem('koulukyytikalenteri-v1',JSON.stringify(snap.data().payload)); sessionStorage.setItem('firebase-calendar-loaded',id); location.reload(); return; } if(!snap.exists()) await window.firebasePersistCalendar(JSON.parse(localStorage.getItem('koulukyytikalenteri-v1')||'{}')); if(stopSync)stopSync(); stopSync=onSnapshot(remoteStateRef,remote=>{ if(!remote.exists()||remote.metadata.hasPendingWrites)return; const payload=remote.data().payload; if(payload)window.applyFirebaseCalendar?.(payload); }); appPanel.hidden=false; document.getElementById('householdSetup').hidden=true; await refreshUserManagement(); watchBackupReminder(); }
+    onAuthStateChanged(auth, async user => { currentUser=user; if(stopBackupSync){stopBackupSync();stopBackupSync=null;} window.clearBackupReminder?.(); document.getElementById('backupData').disabled=true; document.getElementById('restoreData').disabled=true; document.getElementById('backupStatus').textContent=''; appPanel.hidden=true; document.getElementById('householdSetup').hidden=true; document.getElementById('userManagement').hidden=true; document.getElementById('headerUserEmail').textContent=user?.email||''; document.getElementById('signedInRow').hidden=!user?.email; if(!user){document.getElementById('authPanel').hidden=false;document.getElementById('authForm').hidden=false;document.getElementById('showInviteSignup').hidden=false;document.getElementById('inviteSignupForm').hidden=true;document.getElementById('authTitle').textContent='Kirjaudu sisään';document.getElementById('headerHouseholdName').textContent='Yhteinen kalenteri';authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenteriin voi liittyä vain voimassa olevalla kutsukoodilla.');return;} document.getElementById('authForm').hidden=true;document.getElementById('showInviteSignup').hidden=true;document.getElementById('inviteSignupForm').hidden=true; if(!user.emailVerified){document.getElementById('authPanel').hidden=false;document.getElementById('authTitle').textContent='Vahvista sähköposti';authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');return;} document.getElementById('authPanel').hidden=true; try { const pending=JSON.parse(localStorage.getItem('kyytikalenteri-pending-invite')||'null'); if(pending&&pending.email===String(user.email||'').toLowerCase()){await acceptInvite(pending.householdId,pending.code);return;} const remembered=localStorage.getItem('firebase-household-id'); if(remembered){ const membership=await getDoc(doc(firestore,'households',remembered,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(remembered);return;} if(remembered===user.uid){await setDoc(doc(firestore,'households',remembered,'members',user.uid),{email:user.email,role:'owner',active:true,joinedAt:serverTimestamp()});await attachHousehold(remembered);return;} } const membership=await getDoc(doc(firestore,'households',user.uid,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(user.uid);return;} document.getElementById('householdSetup').hidden=false;document.getElementById('householdMessage').textContent='Et ole vielä kalenterin jäsen. Liity kutsukoodilla tai pyydä kutsu ylläpitäjältä.'; } catch(error) { authError(error); } });
   </script>
   <script>
     (() => {
@@ -429,26 +443,40 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.19'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.20'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
         });
         pdfActions.append(pdfButton);$('monthReport').append(pdfActions);
       }
-      $('backupData').addEventListener('click',async()=>{
+      async function makeBackup() {
+        if($('backupData').disabled)return;
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.19');
+          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.20');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-          message.textContent=`Varmuuskopio ladattu: ${filename}. Käyttäjiä: ${snapshot.members.length}.`;
+          try {
+            await window.firebaseRecordBackup(snapshot);
+            message.textContent=`Varmuuskopio ladattu: ${filename}. Jäsenyyksiä: ${snapshot.members.length}${snapshot.membersComplete===false?' (vain oma jäsenyys)':''}. Ajankohta tallennettu.`;
+          } catch {message.textContent=`CSV-varmuuskopio ladattu: ${filename}, mutta ajankohdan tallennus epäonnistui. Muistutus jää voimaan.`;}
         } catch(error) {
-          message.textContent=error?.code==='permission-denied'?'Varmuuskopiointi vaatii omistajan tai ylläpitäjän oikeudet.':error?.code==='unavailable'?'Tietokantaan ei saada yhteyttä. Varmuuskopiota ei luotu.':error?.message||'Varmuuskopiointi epäonnistui. Yritä uudelleen.';
+          message.textContent=error?.code==='permission-denied'?'Varmuuskopiointi vaatii aktiivisen kalenterijäsenyyden.':error?.code==='unavailable'?'Tietokantaan ei saada yhteyttä. Varmuuskopiota ei luotu.':error?.message||'Varmuuskopiointi epäonnistui. Yritä uudelleen.';
         } finally {button.disabled=false;}
-      });
+      }
+      $('backupData').addEventListener('click',makeBackup);
+      const backupReminder=window.createBackupReminder({confirm:message=>window.confirm(message),makeBackup,storage:window.sessionStorage});
+      window.updateBackupReminder = info => {
+        const date=info.lastBackupAt?.toDate?info.lastBackupAt.toDate():info.lastBackupAt?new Date(info.lastBackupAt):null;
+        $('lastBackupInfo').textContent=date&&!Number.isNaN(date.getTime())?'Viimeisin varmuuskopio: '+new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(date):'Viimeisin varmuuskopio: ei vielä kirjattua ajankohtaa.';
+        backupReminder.update(info).catch(()=>{});
+      };
+      window.clearBackupReminder=()=>{backupReminder.clear();$('lastBackupInfo').textContent='Viimeisin varmuuskopio: tarkistetaan…';};
+      setInterval(()=>backupReminder.check().catch(()=>{}),60*60*1000);
+      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')backupReminder.check().catch(()=>{});});
       $('restoreData').addEventListener('click',()=>{
         $('restoreBackupFile').value='';$('restoreBackupFile').click();
       });

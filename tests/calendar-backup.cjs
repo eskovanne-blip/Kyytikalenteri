@@ -27,8 +27,11 @@ const doc=data=>({exists:()=>true,data:()=>data});
 function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',stateRef:'state',memberRef:'own',calendarRef:'calendar',pendingWrites:Promise.resolve(),readDocument:async ref=>doc(ref==='own'?member:ref==='state'?{payload}:snapshot.calendar),readMembers:async()=>({docs:[{id:member.uid,data:()=>({...member,joinedAt:{toDate:()=>new Date(member.joinedAt)},inviteCode:'DO-NOT-EXPORT'})}]}),isCurrent:()=>true};}
 (async()=>{
  const data=await readCalendarBackup(options());assert.deepEqual(data.members,[member]);assert(!JSON.stringify(data).includes('DO-NOT-EXPORT'));
- await assert.rejects(()=>readCalendarBackup({...options(),readDocument:async()=>doc({...member,role:'member'})}),/ylläpitäjän/);
- await assert.rejects(()=>readCalendarBackup({...options(),readDocument:async()=>doc({...member,active:false})}),/ylläpitäjän/);
+ const memberOptions=options(),memberRead=memberOptions.readDocument;let memberListRead=false;
+ memberOptions.readDocument=async ref=>ref==='own'?doc({...member,role:'member'}):memberRead(ref);
+ memberOptions.readMembers=async()=>{memberListRead=true;throw Error('Member must not read private list');};
+ const memberBackup=await readCalendarBackup(memberOptions);assert.equal(memberBackup.membersComplete,false);assert.equal(memberBackup.members.length,1);assert.equal(memberBackup.calendar.memberScope,'self');assert.equal(memberListRead,false);
+ await assert.rejects(()=>readCalendarBackup({...options(),readDocument:async()=>doc({...member,active:false})}),/aktiivisen/);
  await assert.rejects(()=>readCalendarBackup({...options(),user:null}),/Kirjaudu/);
  await assert.rejects(()=>readCalendarBackup({...options(),isCurrent:()=>false}),/vaihtui/);
  await assert.rejects(()=>readCalendarBackup({...options(),readMembers:async()=>{throw Error('offline');}}),/offline/);
@@ -47,12 +50,13 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  // Run the actual calendar UI script with a small browser mock, then click backup.
  const elements=new Map();let downloaded=false,serverRead=false;
  const element=()=>({value:'',innerHTML:'',textContent:'',disabled:false,style:{},handlers:{},addEventListener(event,fn){this.handlers[event]=fn;},append(){},remove(){},click(){downloaded=true;},setAttribute(){},querySelectorAll(){return [];}});
- const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},querySelectorAll(){return [];},createElement:element,body:{append(){}}};
- const browser={document,localStorage:{getItem:()=>JSON.stringify(payload),setItem(){}},Intl,Date,console,setTimeout:fn=>fn(),Blob,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},window:{firebaseReadBackup:async()=>{serverRead=true;return snapshot;},makeCalendarBackupCsv,firebasePersistCalendar:async()=>{}}};
+ const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},querySelectorAll(){return [];},createElement:element,body:{append(){}},addEventListener(){}};
+ let recorded=0;
+ const browser={document,localStorage:{getItem:()=>JSON.stringify(payload),setItem(){}},Intl,Date,console,setInterval(){},setTimeout:fn=>fn(),Blob,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},window:{sessionStorage:{getItem(){},setItem(){}},createBackupReminder,firebaseRecordBackup:async()=>{assert(downloaded,'Timestamp must follow CSV download');recorded++;},firebaseReadBackup:async()=>{serverRead=true;return snapshot;},makeCalendarBackupCsv,firebasePersistCalendar:async()=>{}}};
  vm.createContext(browser);const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];vm.runInContext(scripts.at(-1)[1],browser);
- await elements.get('backupData').handlers.click();assert(serverRead);assert(downloaded);assert(elements.get('backupStatus').textContent.includes('Käyttäjiä: 2'));
+ await elements.get('backupData').handlers.click();assert(serverRead);assert(downloaded);assert.equal(recorded,1);assert(elements.get('backupStatus').textContent.includes('Jäsenyyksiä: 2'));
  downloaded=false;browser.window.firebaseReadBackup=async()=>{throw Object.assign(Error('offline'),{code:'unavailable'});};
- await elements.get('backupData').handlers.click();assert(!downloaded);assert(elements.get('backupStatus').textContent.includes('Varmuuskopiota ei luotu'));assert.equal(elements.get('backupData').disabled,false);
+ await elements.get('backupData').handlers.click();assert(!downloaded);assert.equal(recorded,1);assert(elements.get('backupStatus').textContent.includes('Varmuuskopiota ei luotu'));assert.equal(elements.get('backupData').disabled,false);
  let restoreCalls=0;browser.window.parseCalendarBackupCsv=parseCalendarBackupCsv;browser.window.firebaseReadBackup=async()=>({...snapshot,userUid:'u1'});
  browser.window.firebaseRestoreCalendar=async(p,expected)=>{assert.equal(expected.userUid,'u1');assert.deepEqual(p,restored.payload);restoreCalls++;};
  let confirmation='';browser.window.confirm=question=>{confirmation=question;return false;};
