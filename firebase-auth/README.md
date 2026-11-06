@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.22` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.23` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Varmuuskopio data
 
@@ -35,9 +35,11 @@ Sovellus käyttää Firebase-projektia `kyytikalenteri-auth`, sähköposti- ja s
 
 ## Kalenterin käyttöönotto
 
-1. Ota tämän hakemiston Firestore-säännöt käyttöön Firebase Consolessa tai aja Firebase CLI:llä `firebase deploy --only firestore:rules --project kyytikalenteri-auth`.
+1. Ota tämän hakemiston Firestore-säännöt ja indeksit käyttöön Firebase CLI:llä `firebase deploy --only firestore:rules,firestore:indexes --project kyytikalenteri-auth`.
 2. Avaa Firebase-sovellus GitHub Pagesissa polussa `/Kyytikalenteri/firebase-auth/`.
 3. Käyttäjä avaa kirjautumissivun Liity kutsukoodilla -toiminnosta, syöttää kutsussa olevan sähköpostin, kalenterin tunnuksen ja koodin sekä vahvistaa sähköpostiosoitteen.
 4. Kalenterin ylläpitäjä luo kutsukoodit käyttäjien sähköpostiosoitteille Käyttäjät-osiosta.
 
 Kaikki kalenterin käyttäjät käyttävät samaa `households/{tunnus}/state/calendar`-asiakirjaa. Säännöt rajaavat luku- ja kirjoitusoikeuden vahvistettuun käyttäjään, joka on aktiivinen kalenterin jäsen. Älä lisää tähän hakemistoon Firebase Admin SDK:n yksityisiä avaimia.
+
+Kirjautuminen löytää jäsenyyden myös uudessa selaimessa. Vahvistetulla sähköpostiosoitteella haetaan vain käyttäjän omat `members`-asiakirjat ja tarvittaessa hänelle osoitetut `invites`-asiakirjat collection group -hauilla. Aktiivinen kutsu hyväksytään transaktiossa, joka lisää oman jäsenyyden ja merkitsee kutsun käytetyksi yhdessä. Käytetty kutsu ei estä jo liittyneen käyttäjän kirjautumista. Paikallismuistin kalenteritunnus on vain nopeutus: jäsenyys tarkistetaan palvelimelta. Kyselyt edellyttävät `firestore.indexes.json`-tiedoston sähköpostihakemistoja ja tämän version sääntöjä. Haut eivät anna pääsyä muiden käyttäjien jäsenyyksiin tai kutsuihin.

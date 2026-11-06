@@ -144,7 +144,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.22)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div class="header-main"><h1>Koulukyydit <span class="version">(F_2.0.23)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -195,12 +195,13 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.22"></script>
-  <script src="./calendar-backup.js?v=F_2.0.22"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.23"></script>
+  <script src="./calendar-backup.js?v=F_2.0.23"></script>
+  <script src="./calendar-access.js?v=F_2.0.23"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, getDocFromServer, getDocsFromServer, runTransaction, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup, query, where, getDocs, getDocFromServer, getDocsFromServer, runTransaction, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
     const firebaseApp = initializeApp({apiKey:'AIzaSyDE6LNqHnV_MHzJxDcBsKkjT1Ye3ZH2jBQ',authDomain:'kyytikalenteri-auth.firebaseapp.com',projectId:'kyytikalenteri-auth',storageBucket:'kyytikalenteri-auth.firebasestorage.app',messagingSenderId:'274160528683',appId:'1:274160528683:web:315c3073bf18b9ba8fa96e'});
     const auth = getAuth(firebaseApp), firestore = getFirestore(firebaseApp);
     let currentUser = null, householdId = null, remoteStateRef = null, stopSync = null, stopBackupSync = null;
@@ -213,8 +214,22 @@
     document.getElementById('cancelInviteSignup').addEventListener('click',()=>{document.getElementById('authTitle').textContent='Kirjaudu sisään';document.getElementById('authForm').hidden=false;document.getElementById('showInviteSignup').hidden=false;document.getElementById('inviteSignupForm').hidden=true;});
     document.getElementById('inviteSignupForm').addEventListener('submit',async event=>{event.preventDefault();const emailInput=document.getElementById('inviteSignupEmail'),passwordInput=document.getElementById('inviteSignupPassword'),householdInput=document.getElementById('inviteSignupHousehold'),codeInput=document.getElementById('inviteSignupCode');emailInput.value=emailInput.value.trim().toLowerCase();const id=householdInput.value.trim(),code=codeInput.value.trim();if(!emailInput.reportValidity())return;if(passwordInput.value.length<8){authMessage('Anna salasana, jossa on vähintään 8 merkkiä.');passwordInput.focus();return;}if(!id||!code){authMessage('Anna kalenterin tunnus ja kutsukoodi.');return;}try{const invite=await getDoc(doc(firestore,'households',id,'invites',code));if(!invite.exists()||!invite.data().active||String(invite.data().email||'').toLowerCase()!==emailInput.value)throw new Error('Kutsukoodi ei ole voimassa tälle sähköpostiosoitteelle.');localStorage.setItem('kyytikalenteri-pending-invite',JSON.stringify({householdId:id,code,email:emailInput.value}));const credential=await createUserWithEmailAndPassword(auth,emailInput.value,passwordInput.value);await sendEmailVerification(credential.user);await signOut(auth);authMessage('Kutsukoodi hyväksyttiin. Vahvistusviesti lähetettiin sähköpostiisi. Vahvista osoite ja kirjaudu sisään liittyäksesi kalenteriin.');}catch(error){if(error?.message==='Kutsukoodi ei ole voimassa tälle sähköpostiosoitteelle.')authMessage(error.message);else authError(error);}});
     document.getElementById('signOutButton').addEventListener('click', () => signOut(auth));
-    async function acceptInvite(id,code) { const inviteRef=doc(firestore,'households',id,'invites',code),invite=await getDoc(inviteRef); if(!invite.exists()||!invite.data().active||String(invite.data().email||'').toLowerCase()!==String(currentUser.email||'').toLowerCase())throw new Error('Kutsukoodi ei ole voimassa tälle sähköpostiosoitteelle.'); await setDoc(doc(firestore,'households',id,'members',currentUser.uid),{email:currentUser.email,role:'member',active:true,inviteCode:code,joinedAt:serverTimestamp()}); await updateDoc(inviteRef,{active:false,usedBy:currentUser.uid}); localStorage.removeItem('kyytikalenteri-pending-invite'); await attachHousehold(id); }
-    document.getElementById('joinHousehold').addEventListener('click', async () => { if(!currentUser?.emailVerified) return document.getElementById('householdMessage').textContent='Vahvista sähköpostiosoitteesi ennen liittymistä.'; const id=document.getElementById('householdId').value.trim(), code=document.getElementById('inviteCode').value.trim(); if(!id||!code) return document.getElementById('householdMessage').textContent='Anna kalenterin tunnus ja kutsukoodi.'; try { await acceptInvite(id,code); } catch(error) { authError(error); } });
+    async function acceptInvite(id,code) {
+      const user=currentUser;
+      if(!user?.emailVerified)throw new Error('Vahvista sähköpostiosoitteesi ennen liittymistä.');
+      const memberRef=doc(firestore,'households',id,'members',user.uid),inviteRef=doc(firestore,'households',id,'invites',code);
+      await runTransaction(firestore,async tx=>{
+        const own=await tx.get(memberRef);
+        if(currentUser?.uid!==user.uid)throw new Error('Kirjautuminen vaihtui.');
+        if(own.exists()&&own.data().active)return;
+        const invite=await tx.get(inviteRef);
+        if(!invite.exists()||!invite.data().active||invite.data().email!==user.email)throw new Error('Kutsukoodi ei ole voimassa tälle sähköpostiosoitteelle.');
+        tx.set(memberRef,{email:user.email,role:'member',active:true,inviteCode:code,joinedAt:serverTimestamp()});
+        tx.update(inviteRef,{active:false,usedBy:user.uid});
+      });
+      localStorage.removeItem('kyytikalenteri-pending-invite');
+    }
+    document.getElementById('joinHousehold').addEventListener('click', async () => { if(!currentUser?.emailVerified) return document.getElementById('householdMessage').textContent='Vahvista sähköpostiosoitteesi ennen liittymistä.'; const id=document.getElementById('householdId').value.trim(), code=document.getElementById('inviteCode').value.trim(); if(!id||!code) return document.getElementById('householdMessage').textContent='Anna kalenterin tunnus ja kutsukoodi.'; try { await acceptInvite(id,code); await attachHousehold(id); } catch(error) { authError(error); } });
     document.getElementById('createInvite').addEventListener('click', async () => { if(!householdId||!currentUser) return; const email=prompt('Käyttäjän sähköpostiosoite:')?.trim().toLowerCase(); if(!email) return; const code=crypto.randomUUID().replaceAll('-',''); try { await setDoc(doc(firestore,'households',householdId,'invites',code),{email,active:true,createdBy:currentUser.uid,createdAt:serverTimestamp()}); document.getElementById('inviteResult').textContent=`Kutsukoodi ${code} · kalenterin tunnus ${householdId}`; } catch(error) { authError(error); } });
     document.getElementById('memberList').addEventListener('click',async event=>{const button=event.target.closest('[data-remove-member]');if(!button||!householdId||!currentUser)return;const uid=button.dataset.removeMember,email=button.dataset.memberEmail;if(uid===currentUser.uid)return;button.disabled=true;try{const invites=await getDocs(collection(firestore,'households',householdId,'invites'));for(const invite of invites.docs)if(invite.data().email===email&&invite.data().active)await deleteDoc(invite.ref);await deleteDoc(doc(firestore,'households',householdId,'members',uid));document.getElementById('memberManagementStatus').textContent='Käyttäjän pääsy poistettu. Aiemmat päivämerkinnät säilyvät.';await refreshUserManagement();}catch(error){authError(error);button.disabled=false;}});
     let persistQueue=Promise.resolve();
@@ -263,7 +278,71 @@
       } catch(error) { section.hidden=false; list.innerHTML=''; status.textContent=`Käyttäjien lataus epäonnistui: ${error?.code||error?.message||'tuntematon virhe'}`; }
     }
     async function attachHousehold(id) { householdId=id; localStorage.setItem('firebase-household-id',id); const householdSnap=await getDoc(doc(firestore,'households',id)); document.getElementById('headerHouseholdName').textContent=householdSnap.exists()?householdSnap.data().name:'Yhteinen kalenteri'; remoteStateRef=doc(firestore,'households',id,'state','calendar'); const snap=await getDoc(remoteStateRef); if(snap.exists()&&snap.data().payload&&sessionStorage.getItem('firebase-calendar-loaded')!==id){ localStorage.setItem('koulukyytikalenteri-v1',JSON.stringify(snap.data().payload)); sessionStorage.setItem('firebase-calendar-loaded',id); location.reload(); return; } if(!snap.exists()) await window.firebasePersistCalendar(JSON.parse(localStorage.getItem('koulukyytikalenteri-v1')||'{}')); if(stopSync)stopSync(); stopSync=onSnapshot(remoteStateRef,remote=>{ if(!remote.exists()||remote.metadata.hasPendingWrites)return; const payload=remote.data().payload; if(payload)window.applyFirebaseCalendar?.(payload); }); appPanel.hidden=false; document.getElementById('householdSetup').hidden=true; await refreshUserManagement(); watchBackupReminder(); }
-    onAuthStateChanged(auth, async user => { currentUser=user; if(stopBackupSync){stopBackupSync();stopBackupSync=null;} window.clearBackupReminder?.(); document.getElementById('backupData').disabled=true; document.getElementById('restoreData').disabled=true; document.getElementById('backupStatus').textContent=''; appPanel.hidden=true; document.getElementById('householdSetup').hidden=true; document.getElementById('userManagement').hidden=true; document.getElementById('headerUserEmail').textContent=user?.email||''; document.getElementById('signedInRow').hidden=!user?.email; if(!user){document.getElementById('authPanel').hidden=false;document.getElementById('authForm').hidden=false;document.getElementById('showInviteSignup').hidden=false;document.getElementById('inviteSignupForm').hidden=true;document.getElementById('authTitle').textContent='Kirjaudu sisään';document.getElementById('headerHouseholdName').textContent='Yhteinen kalenteri';authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenteriin voi liittyä vain voimassa olevalla kutsukoodilla.');return;} document.getElementById('authForm').hidden=true;document.getElementById('showInviteSignup').hidden=true;document.getElementById('inviteSignupForm').hidden=true; if(!user.emailVerified){document.getElementById('authPanel').hidden=false;document.getElementById('authTitle').textContent='Vahvista sähköposti';authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');return;} document.getElementById('authPanel').hidden=true; try { const pending=JSON.parse(localStorage.getItem('kyytikalenteri-pending-invite')||'null'); if(pending&&pending.email===String(user.email||'').toLowerCase()){await acceptInvite(pending.householdId,pending.code);return;} const remembered=localStorage.getItem('firebase-household-id'); if(remembered){ const membership=await getDoc(doc(firestore,'households',remembered,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(remembered);return;} if(remembered===user.uid){await setDoc(doc(firestore,'households',remembered,'members',user.uid),{email:user.email,role:'owner',active:true,joinedAt:serverTimestamp()});await attachHousehold(remembered);return;} } const membership=await getDoc(doc(firestore,'households',user.uid,'members',user.uid)); if(membership.exists()&&membership.data().active){await attachHousehold(user.uid);return;} document.getElementById('householdSetup').hidden=false;document.getElementById('householdMessage').textContent='Et ole vielä kalenterin jäsen. Liity kutsukoodilla tai pyydä kutsu ylläpitäjältä.'; } catch(error) { authError(error); } });
+    async function discoverOwnRecords(group,email) {
+      const result=await getDocsFromServer(query(collectionGroup(firestore,group),where('email','==',email)));
+      return result.docs.flatMap(record=>{
+        const parts=record.ref.path.split('/');
+        if(parts.length!==4||parts[0]!=='households'||parts[2]!==group)return [];
+        return [{...record.data(),calendarId:parts[1],uid:record.id,code:record.id}];
+      });
+    }
+    let authGeneration=0;
+    onAuthStateChanged(auth, async user => {
+      const generation=++authGeneration;
+      currentUser=user;
+      if(stopSync){stopSync();stopSync=null;}
+      if(stopBackupSync){stopBackupSync();stopBackupSync=null;}
+      householdId=null;remoteStateRef=null;
+      window.clearBackupReminder?.();
+      document.getElementById('backupData').disabled=true;
+      document.getElementById('restoreData').disabled=true;
+      document.getElementById('backupStatus').textContent='';
+      appPanel.hidden=true;
+      document.getElementById('householdSetup').hidden=true;
+      document.getElementById('userManagement').hidden=true;
+      document.getElementById('headerUserEmail').textContent=user?.email||'';
+      document.getElementById('signedInRow').hidden=!user?.email;
+      if(!user){
+        document.getElementById('authPanel').hidden=false;
+        document.getElementById('authForm').hidden=false;
+        document.getElementById('showInviteSignup').hidden=false;
+        document.getElementById('inviteSignupForm').hidden=true;
+        document.getElementById('authTitle').textContent='Kirjaudu sisään';
+        document.getElementById('headerHouseholdName').textContent='Yhteinen kalenteri';
+        authMessage('Kirjaudu sähköpostilla ja salasanalla. Kalenteriin voi liittyä vain voimassa olevalla kutsukoodilla.');
+        return;
+      }
+      document.getElementById('authForm').hidden=true;
+      document.getElementById('showInviteSignup').hidden=true;
+      document.getElementById('inviteSignupForm').hidden=true;
+      if(!user.emailVerified){
+        document.getElementById('authPanel').hidden=false;
+        document.getElementById('authTitle').textContent='Vahvista sähköposti';
+        authMessage('Vahvista sähköpostiosoitteesi sähköpostiin lähetetystä viestistä ja kirjaudu sitten uudelleen.');
+        return;
+      }
+      document.getElementById('authPanel').hidden=true;
+      document.getElementById('saveState').textContent='Etsitään kalenterijäsenyyttä…';
+      try {
+        const id=await window.findUserCalendar({
+          user,remembered:localStorage.getItem('firebase-household-id'),
+          readMembership:async(id,uid)=>{const member=await getDocFromServer(doc(firestore,'households',id,'members',uid));return member.exists()?member.data():null;},
+          findMemberships:email=>discoverOwnRecords('members',email),
+          findInvites:email=>discoverOwnRecords('invites',email),
+          acceptInvite,isCurrent:()=>generation===authGeneration&&currentUser?.uid===user.uid
+        });
+        if(generation!==authGeneration)return;
+        if(id){await attachHousehold(id);return;}
+        document.getElementById('householdSetup').hidden=false;
+        document.getElementById('householdMessage').textContent='Tälle sähköpostiosoitteelle ei löytynyt aktiivista kalenterijäsenyyttä tai kutsua. Pyydä omistajalta kutsu tähän sähköpostiosoitteeseen tai syötä saamasi kalenterin tunnus ja kutsukoodi.';
+        document.getElementById('saveState').textContent='Kalenterijäsenyyttä ei löytynyt.';
+      } catch(error) {
+        if(generation!==authGeneration)return;
+        document.getElementById('householdSetup').hidden=false;
+        document.getElementById('saveState').textContent='Kalenterin haku epäonnistui. Yritä kirjautua uudelleen.';
+        authError(error);
+      }
+    });
   </script>
   <script>
     (() => {
@@ -442,7 +521,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.22'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.23'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -456,7 +535,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({title,calendarName:$('headerHouseholdName').textContent,month,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.22'});
+            const files=await window.createCalendarImages({title,calendarName:$('headerHouseholdName').textContent,month,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.23'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -486,7 +565,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.22');
+          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.23');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);

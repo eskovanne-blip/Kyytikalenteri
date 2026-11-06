@@ -21,6 +21,17 @@ service cloud.firestore {
         && get(memberPath(householdId, request.auth.uid)).data.role in ['owner', 'admin'];
     }
 
+    // Collection-group discovery is restricted to this verified user's own email.
+    // It grants no calendar data access and never exposes other users' records.
+    match /{path=**}/members/{memberId} {
+      allow list: if signedInVerified()
+        && resource.data.email == request.auth.token.email;
+    }
+    match /{path=**}/invites/{inviteId} {
+      allow list: if signedInVerified()
+        && resource.data.email == request.auth.token.email;
+    }
+
     match /households/{householdId} {
       allow create: if false;
       allow get: if isMember(householdId);
