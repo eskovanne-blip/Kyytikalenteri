@@ -158,7 +158,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.9)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.10)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
       <h2 id="authTitle">Kirjaudu sisään</h2>
@@ -229,10 +229,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=2.0.9"></script>
-  <script src="./calendar-backup.js?v=2.0.9"></script>
-  <script src="./calendar-access.js?v=2.0.9"></script>
-  <script src="./finland-calendar.js?v=2.0.9"></script>
+  <script src="./calendar-pdf.js?v=2.0.10"></script>
+  <script src="./calendar-backup.js?v=2.0.10"></script>
+  <script src="./calendar-access.js?v=2.0.10"></script>
+  <script src="./finland-calendar.js?v=2.0.10"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -557,7 +557,7 @@
         const available=activePeople();
         const archivedSelected=chosen.filter(index=>data.inactivePeople.includes(data.people[index])).map(index=>({name:data.people[index],index,archived:true}));
         const visible=[...available.map(person=>({...person,archived:false})),...archivedSelected];
-        return `<div class="direction ${cls}"><h3><i class="dot"></i>${title}</h3><p>${note}</p>${extra}${visible.length?`<div class="checklist">${visible.map(({name,index,archived})=>`<label class="check"><input type="checkbox" data-way="${way}" data-person="${index}" ${chosen.includes(index)?'checked':''} ${archived?'disabled':''}><span>${safe(name)}</span></label>`).join('')}</div>`:'<div class="no-people">Lisää ensin henkilöt Henkilöt-kohdasta.</div>'}</div>`;
+        return `<div class="direction ${cls}"><h3><i class="dot"></i>${title}</h3>${extra}<p>${note}</p>${visible.length?`<div class="checklist">${visible.map(({name,index,archived})=>`<label class="check"><input type="checkbox" data-way="${way}" data-person="${index}" ${chosen.includes(index)?'checked':''} ${archived?'disabled':''}><span>${safe(name)}</span></label>`).join('')}</div>`:'<div class="no-people">Lisää ensin henkilöt Henkilöt-kohdasta.</div>'}</div>`;
       }
       function renderDetail() {
         const date = new Date(`${selected}T12:00:00`);
@@ -565,8 +565,8 @@
         const dayNotes = data.trips[selected]?.notes||[];
         const observances=observancesForDay(selected);
         const noteOptions = ['Toisen kyydissä','Oma kyyti','Poissa koulusta/ei kuljettu','Loma'];
-        const morningControls=`<div class="note-controls"><select class="day-note-select" id="dayNoteSelect" required aria-label="Aamun merkintä"><option value="" selected disabled>Tee merkintä aamuun</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
-        const eveningControls=`<div class="note-controls"><select class="day-note-select" id="eveningNoteSelect" required aria-label="Illan merkintä"><option value="" selected disabled>Tee merkintä iltapäivään</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const morningControls=`<div class="note-controls"><select class="day-note-select" id="dayNoteSelect" required aria-label="Aamun merkintä"><option value="" selected disabled>Tee lisämerkintä aamuun</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const eveningControls=`<div class="note-controls"><select class="day-note-select" id="eveningNoteSelect" required aria-label="Illan merkintä"><option value="" selected disabled>Tee lisämerkintä iltapäivään</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
         $('detail').innerHTML = `<div class="detail-head"><div><h2>${safe(dayLabel)}</h2><button class="today-link" id="goToday">Siirry tähän päivään</button></div><div class="day-actions"><button class="day-action add-all" id="addAll" type="button" aria-label="Lisää kaikki henkilöt tälle päivälle">+ KAIKKI</button><button class="day-action remove-all" id="removeAll" type="button" aria-label="Poista kaikki henkilöt tältä päivältä">- KAIKKI</button></div></div>${observances.length?`<ul class="detail-observances">${observances.map(item=>`<li>${safe(observanceLabel(item))}</li>`).join('')}</ul>`:''}${dayNotes.length?`<div class="day-notes">${dayNotes.map(note=>`<span class="day-note-chip ${driverDirection(note)?`driver-${driverDirection(note)}`:''}">${safe(note)}<button class="note-remove" data-remove-note="${safe(note)}" type="button" aria-label="Poista merkintä ${safe(note)}">×</button></span>`).join('')}</div>`:''}${directionMarkup(selected,'to','Aamulla kyydissä olleet ja muut merkinnät','Keitä matkusti samalla autolla?','school',morningControls)}${directionMarkup(selected,'home','Iltapäivällä kyydissä olleet ja muut merkinnät','Keitä matkusti samalla autolla?','home',eveningControls)}`;
       }
       function renderReport() {
@@ -598,7 +598,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.9'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.10'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -612,7 +612,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.9'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.10'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -642,7 +642,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'2.0.9');
+          const csv=window.makeCalendarBackupCsv(snapshot,'2.0.10');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
