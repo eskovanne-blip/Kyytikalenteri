@@ -13,6 +13,13 @@ const parsed=JSON.parse(JSON.stringify(context.parseCsv(csv)));
 for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(parsed[key],payload[key],key+' legacy round trip');
 assert(csv.includes('"member","u1","owner"'));assert(csv.includes('"member","u2","member"'));assert(csv.includes('""active"":false'));
 assert(!csv.includes('password'));assert(csv.includes('"parameter","version","","F_2.0.16"'));
+const duplicateRates={...payload,tripPrices:[
+  {date:'0001-01-01',price:1},{date:'2026-01-01',price:1},
+  {date:'2026-02-01',price:2},{date:'2026-03-01',price:1}
+]};
+const compactCsv=makeCalendarBackupCsv({...snapshot,payload:duplicateRates},'2.0.21');
+assert.deepEqual(parseCalendarBackupCsv(compactCsv).payload.tripPrices,
+  duplicateRates.tripPrices.filter(rate=>rate.date!=='2026-01-01'));
 const restored=parseCalendarBackupCsv(csv);
 for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(restored.payload[key],payload[key],key+' restore round trip');
 assert.equal(restored.calendar.id,'cal1');assert.equal(restored.calendar.appVersion,'F_2.0.16');assert.equal(restored.memberCount,2);

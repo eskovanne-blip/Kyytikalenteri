@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.20` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.21` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Pyhä- ja liputuspäivät
 
@@ -20,7 +20,7 @@ CSV-latauksen käynnistyttyä sen ajankohta tallennetaan palvelimen aikaleimalla
 
 Kaikille aktiivisille käyttäjille kysytään varmuuskopiota, kun edellisestä on kulunut yli 30 vuorokautta. Jos ajankohtaa ei vielä ole, kysytään ensimmäisen kirjatun kopion tekemistä. Peruuttamisen jälkeen samalta käyttäjältä kysytään samassa selainistunnossa aikaisintaan seuraavana päivänä. Tilanne tarkistetaan kirjautumisen jälkeen, sivulle palattaessa ja tunnin välein. Tuore yhteinen varmuuskopio kuittaa muistutuksen kaikilta käyttäjiltä.
 
-CSV:n merkistö on UTF-8 (BOM), rivinvaihto CRLF ja sarakkeet ovat alkuperäiset `type,date,direction,person`. Alkuperäiset `parameter`, `saldo`, `person`, `trip` ja `note` -rivit säilyvät samassa muodossa, mukaan lukien hintahistoria, maksun etumerkki ja käytöstä poistetut henkilöt. `parameter,version` sisältää varmuuskopion luoneen Kyytikalenterin version.
+CSV:n merkistö on UTF-8 (BOM), rivinvaihto CRLF ja sarakkeet ovat alkuperäiset `type,date,direction,person`. Alkuperäiset `parameter`, `saldo`, `person`, `trip` ja `note` -rivit säilyvät samassa muodossa, mukaan lukien hintamuutokset, maksun etumerkki ja käytöstä poistetut henkilöt. Peräkkäisistä samanhintaisista merkinnöistä viedään vain ensimmäinen. `parameter,version` sisältää varmuuskopion luoneen Kyytikalenterin version.
 
 Lisätietueet käyttävät samoja neljää saraketta:
 

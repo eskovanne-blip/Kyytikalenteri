@@ -135,7 +135,13 @@
     const prices=new Map();
     for(const rate of payload.tripPrices||[])prices.set(rate.date,Number(rate.price));
     if(!prices.has('0001-01-01'))prices.set('0001-01-01',Number(payload.tripPrice??1));
-    for(const [date,price] of [...prices].sort(([a],[b])=>a.localeCompare(b)))rows.push(['parameter',date,'tripPrice',price.toFixed(2)]);
+    let previousPrice;
+    for(const [date,price] of [...prices].sort(([a],[b])=>a.localeCompare(b))){
+      const exportedPrice=price.toFixed(2);
+      if(exportedPrice===previousPrice)continue;
+      rows.push(['parameter',date,'tripPrice',exportedPrice]);
+      previousPrice=exportedPrice;
+    }
     const payments=new Map();
     for(const payment of payload.payments||[])payments.set(payment.person+'\u0000'+payment.month,payment);
     for(const payment of payments.values()){
