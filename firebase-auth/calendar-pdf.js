@@ -76,7 +76,10 @@
       if(!(entry.to?.length||entry.home?.length||notes.length))return [];
       const direction=way=>{
         const names=(Array.isArray(entry[way])?entry[way]:[]).map(i=>people[i]).filter(v=>v!==undefined);
-        const relevant=notes.filter(n=>way==='to'?!n.endsWith(' ajoi illalla'):!n.endsWith(' ajoi aamulla'));
+        const relevant=notes.filter(note=>{
+          if(way==='to')return !note.endsWith(' ajoi illalla');
+          return !note.endsWith(' ajoi aamulla')&&note!=='Loma'&&note!=='Poissa koulusta/ei kuljettu'&&note!=='Poissa';
+        });
         const runs=[...names.map(name=>({text:name,bold:false})),...relevant.map(note=>({text:note,bold:true}))];
         return runs.length?runs.flatMap((run,i)=>i?[{text:'; ',bold:false},run]:[run]):[{text:'-',bold:false}];
       };
@@ -88,7 +91,7 @@
     table(rows,[22,82,82],font,padding);
     if(!dayRows.length){text('Ei päiväkohtaisia merkintöjä tässä kuussa.',left,y+2,8);y+=6;}
     y+=3;if(y+7>bottom)newPage();
-    text('Koko päivälle tallennetut merkinnät näkyvät sekä aamun että illan sarakkeessa.',left,y,6.5,false,muted);
+    text('Loma ja poissaolo näkyvät kerran, aamun sarakkeessa.',left,y,6.5,false,muted);
     const pages=pdf.getNumberOfPages();
     for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setDrawColor(220,229,224);pdf.line(left,285,left+width,285);text('Kyytikalenteri | '+clean(version),left,288,7,false,muted);text(`${i} / ${pages}`,188,288,7,false,muted);}
     pdf.setProperties({title:reportTitle,subject:'Kuukausiyhteenveto ja päiväkohtaiset merkinnät',creator:'Kyytikalenteri '+version});
