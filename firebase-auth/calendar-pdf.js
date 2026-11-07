@@ -1,12 +1,15 @@
 /* PDF layout uses millimetres on A4 portrait. No calendar data leaves the browser. */
 (function(root) {
   'use strict';
-  root.createCalendarPdf = function({title, calendarName, month, people, trips, summary, version, generatedAt=new Date(), prepareDocument}) {
+  root.createCalendarPdf = function({month, people, trips, summary, version, generatedAt=new Date(), prepareDocument}) {
     const pdf = new root.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
     if(prepareDocument)prepareDocument(pdf);
     const euro = n => Number(n).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const clean = value => String(value ?? '').replace(/[\u0000-\u001f]/g,' ').replace(/\u2212/g,'-');
     const money = value => Number(value)<0 ? 'Maksettavaa '+euro(-value) : Number(value)>0 ? 'Hyvitystä '+euro(value) : euro(0);
+    const reportTitle='Kyydit '+new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));
+    const reportDate=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(generatedAt);
+    const reportSubtitle='Kyytikalenteri '+clean(version)+' | Ajopäivä '+reportDate;
     const green=[35,107,82], ink=[32,43,40], muted=[105,117,112];
     const left=12,width=186,bottom=281;
     let y=12;
@@ -16,9 +19,8 @@
     }
     function heading(label) { if(y+14>bottom)newPage();text(label,left,y,10,true,green); y+=6; }
     function header(continued=false) {
-      y=12; text('Koulukyydit',left,y,18,true);y+=9;
-      text(clean(calendarName)+' | '+clean(title)+(continued?' | jatkuu':''),left,y,9);y+=6;
-      if(!continued){text('Muodostettu '+new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(generatedAt),left,y,7,false,muted);y+=8;}
+      y=12; text(reportTitle,left,y,18,true);y+=9;
+      text(reportSubtitle+(continued?' | jatkuu':''),left,y,9,false,muted);y+=8;
     }
     function newPage(){pdf.addPage();header(true);}
     function tableLayout(rows,widths,font,padding) {
@@ -87,8 +89,8 @@
     y+=3;if(y+7>bottom)newPage();
     text('Koko päivälle tallennetut merkinnät näkyvät sekä aamun että illan sarakkeessa.',left,y,6.5,false,muted);
     const pages=pdf.getNumberOfPages();
-    for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setDrawColor(220,229,224);pdf.line(left,285,left+width,285);text('Koulukyydit | '+clean(version),left,288,7,false,muted);text(`${i} / ${pages}`,188,288,7,false,muted);}
-    pdf.setProperties({title:'Koulukyydit - '+clean(title),subject:'Kuukausiyhteenveto ja päiväkohtaiset merkinnät',creator:'Koulukyydit '+version});
+    for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setDrawColor(220,229,224);pdf.line(left,285,left+width,285);text('Kyytikalenteri | '+clean(version),left,288,7,false,muted);text(`${i} / ${pages}`,188,288,7,false,muted);}
+    pdf.setProperties({title:reportTitle,subject:'Kuukausiyhteenveto ja päiväkohtaiset merkinnät',creator:'Kyytikalenteri '+version});
     return pdf;
   };
 
