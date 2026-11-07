@@ -64,11 +64,11 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  await elements.get('restoreBackupFile').handlers.change({target:fileInput});assert.equal(restoreCalls,0);assert(confirmation.includes('korvataan'));assert(confirmation.includes('Käyttäjätunnukset ja käyttöoikeudet säilyvät'));assert(elements.get('backupStatus').textContent.includes('peruutettu'));
  browser.window.confirm=()=>true;await elements.get('restoreBackupFile').handlers.change({target:fileInput});assert.equal(restoreCalls,1);assert(elements.get('backupStatus').textContent.includes('palautettu'));
  fileInput.files[0].text=async()=> 'invalid';await elements.get('restoreBackupFile').handlers.change({target:fileInput});assert.equal(restoreCalls,1);assert(elements.get('backupStatus').textContent.includes('virheellinen'));
- // Exercise the real payment UI in both directions, including a prior partial payment.
+ // Exercise the real payment UI in both directions, including cancellation and removal.
  const now=new Date(), month=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
  let ledger={...payload,people:['Anna','Väinö'],inactivePeople:[],tripPrice:5,
    tripPrices:[{date:'0001-01-01',price:5}],
-   payments:[{person:'Anna',month,amount:2},{person:'Väinö',month,amount:2}],
+   payments:[],
    trips:{[month+'-01']:{to:[0],home:[],notes:['Väinö ajoi aamulla']}}};
  browser.window.applyFirebaseCalendar(ledger);
  const get=id=>elements.get(id);
@@ -77,30 +77,41 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.equal((get('paymentMonth').innerHTML.match(/<option/g)||[]).length,3);
  get('paymentMonth').value=month;
  get('paymentMonth').handlers.change();
- assert.match(get('paymentBalances').innerHTML,/[−-]3,00/);
- assert.match(get('paymentBalances').innerHTML,/7,00/);
+ assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
+ assert.match(get('paymentBalances').innerHTML,/5,00/);
  let writesToLedger=0;
  browser.window.firebaseRecordPayment=async change=>{
    const payments=change(ledger);
-   assert.throws(()=>change({...ledger,payments}),/Saldo muuttui/);
+   assert.throws(()=>change({...ledger,payments}),/Saldo tai maksumerkintä muuttui/);
    ledger={...ledger,payments};
    writesToLedger++;
    browser.window.applyFirebaseCalendar(ledger);
  };
  const choose=index=>get('paymentBalances').handlers.click({target:{closest:()=>({dataset:{paymentPerson:String(index)}})}});
- browser.window.confirm=question=>{assert.match(question,/Onko Anna maksanut.*3,00/);return false;};
+ browser.window.confirm=question=>{assert.match(question,/Onko Anna maksanut.*5,00/);return false;};
  await choose(0);
  assert.equal(writesToLedger,0);
- browser.window.confirm=question=>{assert.match(question,/Onko Anna maksanut.*3,00/);return true;};
+ browser.window.confirm=question=>{assert.match(question,/Onko Anna maksanut.*5,00/);return true;};
  await choose(0);
- browser.window.confirm=question=>{assert.match(question,/Oletko maksanut.*Väinö.*7,00/);return true;};
+ browser.window.confirm=question=>{assert.match(question,/Oletko maksanut.*Väinö.*5,00/);return true;};
  await choose(1);
  assert.equal(writesToLedger,2);
  assert.equal(ledger.payments.find(p=>p.person==='Anna').amount,5);
  assert.equal(ledger.payments.find(p=>p.person==='Väinö').amount,-5);
- assert(get('monthReport').innerHTML.includes('2,00 € / 7,00 €*'));
- assert.doesNotMatch(get('paymentBalances').innerHTML,/[−-]3,00|>7,00/);
- const mixedCsv=makeCalendarBackupCsv({...snapshot,payload:ledger},'F_2.0.28');
- assert.deepEqual(parseCalendarBackupCsv(mixedCsv).payload.payments,JSON.parse(JSON.stringify(ledger.payments)));
+ assert(get('monthReport').innerHTML.includes('5,00 €*'));
+ assert.equal((get('paymentBalances').innerHTML.match(/Uusi saldo 0,00 €/g)||[]).length,2);
+ browser.window.confirm=question=>{assert.match(question,/Poistetaanko henkilön Anna maksumerkintä.*alkuperäinen saldo/);return false;};
+ await choose(0);
+ assert.equal(writesToLedger,2);
+ browser.window.confirm=()=>true;
+ await choose(0);
+ await choose(1);
+ assert.equal(writesToLedger,4);
+ assert.equal(ledger.payments.length,0);
+ assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
+ assert.doesNotMatch(get('paymentBalances').innerHTML,/Uusi saldo/);
+ const mixed={...ledger,payments:[{person:'Väinö',month,amount:-5,outgoing:7}]};
+ const mixedCsv=makeCalendarBackupCsv({...snapshot,payload:mixed},'F_2.0.29');
+ assert.deepEqual(parseCalendarBackupCsv(mixedCsv).payload.payments,mixed.payments);
  console.log('PASS: backup/restore round trips, malformed CSV rejection, legacy format, admin and session checks, concurrent edits, offline failures, UI confirmation cancel and restore, no user-account writes.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

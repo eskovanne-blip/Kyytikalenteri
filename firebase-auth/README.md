@@ -1,10 +1,10 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.28` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.29` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Maksujen hallinta
 
-Valitse edellinen tai nykyinen kuukausi ja sitten henkilö. Vahvistettu maksu kuittaa henkilön avoimen saldon. Suoritus-sarakkeessa tähdellä merkitty summa tarkoittaa henkilölle maksettua summaa. Jos samalle kuukaudelle on kirjattu maksuja molempiin suuntiin, Suoritus näyttää molemmat summat.
+Valitse edellinen tai nykyinen kuukausi ja sitten henkilö. Vahvistettu maksu kuittaa henkilön avoimen saldon. Valitse henkilön nimi uudelleen, jos haluat poistaa kuukauden maksumerkinnän ja palauttaa saldon. Suoritus-sarakkeessa tähdellä merkitty summa tarkoittaa henkilölle maksettua summaa. Jos samalle kuukaudelle on kirjattu maksuja molempiin suuntiin, Suoritus näyttää molemmat summat.
 
 ## Varmuuskopiointi ja palautus
 
