@@ -1,6 +1,10 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.27` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.28` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+
+## Maksujen hallinta
+
+Valitse edellinen tai nykyinen kuukausi ja sitten henkilö. Vahvistettu maksu kuittaa henkilön avoimen saldon. Suoritus-sarakkeessa tähdellä merkitty summa tarkoittaa henkilölle maksettua summaa. Jos samalle kuukaudelle on kirjattu maksuja molempiin suuntiin, Suoritus näyttää molemmat summat.
 
 ## Varmuuskopiointi ja palautus
 
@@ -16,6 +20,7 @@ Lisätietueet käyttävät samoja neljää saraketta:
 
 | type | date | direction | person |
 | --- | --- | --- | --- |
+| `saldo-maksettu` | Kuukausi | Henkilölle maksettu summa | Henkilön nimi |
 | `calendar` | Kalenterin tunnus | `metadata` | JSON: `id`, `name`, `ownerUid`, `memberScope`, `exportedAt`, `appVersion` |
 | `member` | Firebase Auth UID | Rooli (`owner`, `admin`, `member`) | JSON: `email`, `active`, `joinedAt` |
 

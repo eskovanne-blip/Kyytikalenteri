@@ -65,7 +65,7 @@
     if(quoted)fail();if(cell!==''||row.length||afterQuote)endRow();
     if(!rows.length||rows[0].join(',')!=='type,date,direction,person'||rows.some(r=>r.length!==4))fail();
     const payload={people:[],inactivePeople:[],payments:[],tripPrices:[],tripPrice:1,trips:{}};
-    const prices=new Map(),payments=new Map();let calendar=null,memberCount=0,contentRows=0;
+    const prices=new Map(),payments=new Map(),outgoingPayments=new Map();let calendar=null,memberCount=0,contentRows=0;
     const number=value=>{if(!value.trim()||!Number.isFinite(Number(value)))fail();return Number(value);};
     const validMonth=value=>/^\d{4}-(0[1-9]|1[0-2])$/.test(value);
     const validDate=value=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const d=new Date(value+'T12:00:00Z');return !Number.isNaN(d.valueOf())&&d.toISOString().slice(0,10)===value;};
@@ -83,6 +83,10 @@
       }else if(type==='person'){contentRows++;}
       else if(type==='saldo'){
         if(!validMonth(date))fail();person(value);payments.set(value+'\u0000'+date,{person:value,month:date,amount:number(direction)});contentRows++;
+      }else if(type==='saldo-maksettu'){
+        const amount=number(direction);
+        if(!validMonth(date)||!value.trim()||amount<=0)fail();
+        outgoingPayments.set(value+'\u0000'+date,amount);
       }else if(type==='trip'||type==='note'){
         if(!validDate(date)||!value.trim()||(type==='trip'&&!['to','home'].includes(direction)))fail();
         const entry=payload.trips[date]||(payload.trips[date]={to:[],home:[],notes:[]});
@@ -102,6 +106,11 @@
     payload.tripPrices=[...prices].sort(([a],[b])=>a.localeCompare(b)).map(([date,price])=>({date,price}));
     const today=new Date().toLocaleDateString('sv-SE');
     for(const rate of payload.tripPrices)if(rate.date<=today)payload.tripPrice=rate.price;
+    for(const [key,outgoing] of outgoingPayments){
+      const payment=payments.get(key);
+      if(!payment||outgoing<=Math.max(0,-payment.amount))fail();
+      payment.outgoing=outgoing;
+    }
     payload.payments=[...payments.values()];
     return {payload,calendar,memberCount};
   };
@@ -129,7 +138,10 @@
     for(const [date,price] of [...prices].sort(([a],[b])=>a.localeCompare(b)))rows.push(['parameter',date,'tripPrice',price.toFixed(2)]);
     const payments=new Map();
     for(const payment of payload.payments||[])payments.set(payment.person+'\u0000'+payment.month,payment);
-    for(const payment of payments.values())rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
+    for(const payment of payments.values()){
+      rows.push(['saldo',payment.month,Number(payment.amount).toFixed(2),payment.person]);
+      if(payment.outgoing>Math.max(0,-payment.amount))rows.push(['saldo-maksettu',payment.month,Number(payment.outgoing).toFixed(2),payment.person]);
+    }
     payload.people.forEach(name=>rows.push(['person','',(payload.inactivePeople||[]).includes(name)?'inactive':'',name]));
     for(const date of Object.keys(payload.trips).sort()){
       const entry=payload.trips[date];
