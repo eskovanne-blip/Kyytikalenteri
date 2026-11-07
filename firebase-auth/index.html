@@ -157,7 +157,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.27)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.28)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
       <h2 id="authTitle">Kirjaudu sisään</h2>
@@ -194,7 +194,15 @@
         <section class="card month-report" id="monthReport"></section>
         <section class="card panel">
           <h2>Parametrit</h2>
-          <div class="path-row"><label for="tripPrice">Matkustetun suunnan arvo (€)</label><input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Matkustetun suunnan arvo euroina"></div>
+          <form class="path-row" id="tripPriceForm">
+            <p class="hint" id="tripPriceInfo" style="margin:0" aria-live="polite"></p>
+            <label for="tripPrice">Uusi hinta yhdelle ajosuunnalle (€)</label>
+            <input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" required>
+            <label for="tripPriceDate">Voimassa alkaen</label>
+            <input id="tripPriceDate" type="date" required>
+            <button class="primary" type="submit">Tallenna hinta</button>
+            <p class="hint" id="tripPriceStatus" role="status" style="margin:0"></p>
+          </form>
           <div class="path-row">
             <button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false" aria-controls="paymentPanel">Maksujen hallinta</button>
             <div class="payment-panel" id="paymentPanel" hidden>
@@ -229,10 +237,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=2.0.27"></script>
-  <script src="./calendar-backup.js?v=2.0.27"></script>
-  <script src="./calendar-access.js?v=2.0.27"></script>
-  <script src="./finland-calendar.js?v=2.0.27"></script>
+  <script src="./calendar-pdf.js?v=2.0.28"></script>
+  <script src="./calendar-backup.js?v=2.0.28"></script>
+  <script src="./calendar-access.js?v=2.0.28"></script>
+  <script src="./finland-calendar.js?v=2.0.28"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -618,7 +626,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.27'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.28'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -632,7 +640,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.27'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.28'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -662,7 +670,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const version='2.0.27';
+          const version='2.0.28';
           const csv=window.makeCalendarBackupCsv(snapshot,version);
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
@@ -703,32 +711,47 @@
           message.textContent='Palautetaan varmuuskopio tietokantaan…';
           await window.firebaseRestoreCalendar(imported.payload,expected);
           window.applyFirebaseCalendar(imported.payload);
-          $('tripPrice').value=Number(data.tripPrice).toFixed(2);
           message.textContent=`Varmuuskopio palautettu: ${days.length} päivää. Käyttäjätunnuksia ja käyttöoikeuksia ei muutettu.`;
         } catch(error) {
           message.textContent=error?.code==='permission-denied'?'Palautus vaatii omistajan tai ylläpitäjän oikeudet.':error?.code==='unavailable'?'Tietokantaan ei saada yhteyttä. Palautusta ei tehty.':error?.message||'Palautus epäonnistui.';
         } finally {button.disabled=false;backupButton.disabled=false;event.target.value='';}
       });
-      function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); renderPaymentBalances(); }
+      function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); renderPaymentBalances(); renderTripPrices(); }
       $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
       $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
       $('days').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;const d=new Date(`${selected}T12:00:00`);cursor=new Date(d.getFullYear(),d.getMonth(),1);render();setTimeout(()=>$('detail').querySelector('[data-way="to"]')?.focus(),0)});
       $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;const existingIndex=data.people.findIndex(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'));if(existingIndex>=0){const existingName=data.people[existingIndex];if(data.inactivePeople.includes(existingName)){data.inactivePeople=data.inactivePeople.filter(p=>p!==existingName);input.setCustomValidity('');input.value='';save();render();return;}input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
       $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
-      $('tripPrice').value=Number(data.tripPrice).toFixed(2);
-      $('tripPrice').addEventListener('change',e=>{
-        const input=e.target,value=Number(input.value),oldPrice=Number(data.tripPrice);
-        if(!Number.isFinite(value)||value<0){input.value=oldPrice.toFixed(2);return;}
-        const price=Math.round(value*100)/100;
-        if(price===oldPrice){input.value=oldPrice.toFixed(2);return;}
-        const answer=window.prompt('Mistä päivämäärästä alkaen uutta arvoa käytetään? (VVVV-KK-PP)',iso(today));
-        if(answer===null){input.value=oldPrice.toFixed(2);return;}
-        const effectiveDate=answer.trim(),date=new Date(`${effectiveDate}T12:00:00`);
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)||Number.isNaN(date.getTime())||iso(date)!==effectiveDate){status('Anna päivämäärä muodossa VVVV-KK-PP.');input.value=oldPrice.toFixed(2);return;}
-        const existingIndex=data.tripPrices.findIndex(rate=>rate.date===effectiveDate),newRate={date:effectiveDate,price};
-        if(existingIndex>=0)data.tripPrices[existingIndex]=newRate;else data.tripPrices.push(newRate);
-        data.tripPrices=normalizeTripPrices(data.tripPrices,oldPrice);data.tripPrice=priceFromHistory(data.tripPrices,iso(today),oldPrice);
-        save();renderReport();renderPaymentBalances();input.value=data.tripPrice.toFixed(2);status(`Matkustetun suunnan arvo tallennettu alkaen ${effectiveDate}.`);
+      function renderTripPrices() {
+        const currentDay=iso(new Date());
+        const currentPrice=priceFromHistory(data.tripPrices,currentDay,data.tripPrice);
+        const dateFormat=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'});
+        const scheduled=data.tripPrices.filter(rate=>rate.date>currentDay).map(rate=>
+          euro(rate.price)+' € alkaen '+dateFormat.format(new Date(rate.date+'T12:00:00')));
+        $('tripPriceInfo').textContent='Nykyinen hinta: '+euro(currentPrice)+' € / ajosuunta'+
+          (scheduled.length?' · Ajastettu: '+scheduled.join(', '):'');
+      }
+      $('tripPriceDate').value=nextMonth(iso(new Date()).slice(0,7))+'-01';
+      $('tripPriceForm').addEventListener('submit',event=>{
+        event.preventDefault();
+        const input=$('tripPrice'), effectiveDate=$('tripPriceDate').value;
+        const date=new Date(effectiveDate+'T12:00:00'), cents=Math.round(Number(input.value)*100);
+        const message=$('tripPriceStatus');
+        if(!input.value||!Number.isSafeInteger(cents)||cents<0||
+          !/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)||Number.isNaN(date.getTime())||iso(date)!==effectiveDate){
+          message.textContent='Tarkista hinta ja voimaantulopäivä.';
+          return;
+        }
+        const price=cents/100;
+        if(price===priceFromHistory(data.tripPrices,effectiveDate,data.tripPrice)){
+          message.textContent='Valitusta päivästä alkaen on jo voimassa sama hinta.';
+          return;
+        }
+        data.tripPrices=normalizeTripPrices([...data.tripPrices,{date:effectiveDate,price}],data.tripPrice);
+        data.tripPrice=priceFromHistory(data.tripPrices,iso(new Date()),data.tripPrice);
+        save();renderTripPrices();renderReport();renderPaymentBalances();
+        input.value='';
+        message.textContent='Hinta '+euro(price)+' € alkaen '+new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(date)+'.';
       });
       let paymentPending=false, paymentDraft=null;
       function closePaymentEditor() {

@@ -176,5 +176,25 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.doesNotMatch(get('detail').innerHTML,/Väinö ajoi aamulla/);
  assert.match(get('detail').innerHTML,/Väinö ajoi illalla/);
  assert.equal((get('monthReport').innerHTML.match(/>5,00€</g)||[]).length,2);
+ const upcoming=new Date(now.getFullYear(),now.getMonth()+1,1);
+ const nextKey=upcoming.getFullYear()+'-'+String(upcoming.getMonth()+1).padStart(2,'0')+'-01';
+ browser.window.applyFirebaseCalendar({...ledger,payments:[],tripPrice:1,
+   tripPrices:[{date:'0001-01-01',price:1}],
+   trips:{[todayKey]:{to:[],home:[],notes:['Anna ajoi aamulla']},
+     [nextKey]:{to:[],home:[],notes:['Väinö ajoi aamulla']}}
+ });
+ assert.equal(get('tripPriceDate').value,nextKey);
+ const setTripPrice=value=>{
+   document.getElementById('tripPrice').value=value;
+   get('tripPriceForm').handlers.submit({preventDefault(){}});
+ };
+ setTripPrice('2.00');
+ assert.match(get('tripPriceInfo').textContent,/Nykyinen hinta: 1,00 €.*Ajastettu: 2,00 €/);
+ assert.match(get('monthReport').innerHTML,/>1,00€<\/td>/);
+ get('next').handlers.click();
+ assert.match(get('monthReport').innerHTML,/>2,00€<\/td>/);
+ setTripPrice('1.00');
+ assert.match(get('tripPriceInfo').textContent,/Ajastettu: 1,00 €/);
+ assert.doesNotMatch(get('monthReport').innerHTML,/>2,00€<\/td>/);
  console.log('PASS: backup/restore round trips, malformed CSV rejection, legacy format, admin and session checks, concurrent edits, offline failures, UI confirmation cancel and restore, no user-account writes.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
