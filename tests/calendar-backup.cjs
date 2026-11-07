@@ -15,7 +15,7 @@ assert(csv.includes('"member","u1","owner"'));assert(csv.includes('"member","u2"
 assert(!csv.includes('password'));assert(csv.includes('F_2.0.16'));
 const restored=parseCalendarBackupCsv(csv);
 for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(restored.payload[key],payload[key],key+' restore round trip');
-assert.equal(restored.calendar.id,'cal1');assert.equal(restored.memberCount,2);
+assert.equal(restored.calendar.id,'cal1');assert.equal(restored.calendar.appVersion,'F_2.0.16');assert.equal(restored.memberCount,2);
 assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person\ntrip,2026-02-30,to,Anna'),/virheellinen/);
 assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person\nsaldo,2026-11,NaN,Anna'),/virheellinen/);
 assert.throws(()=>parseCalendarBackupCsv('type,date,direction,person\nperson,,,"unfinished'),/virheellinen/);
@@ -55,8 +55,8 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  const browser={document,localStorage:{getItem:()=>JSON.stringify(payload),setItem(){}},Intl,Date,console,setInterval(){},setTimeout:fn=>fn(),Blob,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},window:{sessionStorage:{getItem(){},setItem(){}},createBackupReminder,firebaseRecordBackup:async()=>{assert(downloaded,'Timestamp must follow CSV download');recorded++;},firebaseReadBackup:async()=>{serverRead=true;return snapshot;},makeCalendarBackupCsv,firebasePersistCalendar:async()=>{}}};
  vm.createContext(browser);const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];vm.runInContext(scripts.at(-1)[1],browser);
  const latestBackup={calendarId:'cal1',userUid:'u1',lastBackupAt:new Date().toISOString()};
- browser.window.updateBackupReminder({...latestBackup,lastBackupByEmail:'tekijä@example.com'});
- assert.match(elements.get('lastBackupInfo').textContent,/Viimeisin varmuuskopio: .* · Tekijä: tekijä@example.com/);
+ browser.window.updateBackupReminder({...latestBackup,lastBackupByEmail:'tekijä@example.com',lastBackupVersion:'2.0.19'});
+ assert.match(elements.get('lastBackupInfo').textContent,/Viimeisin varmuuskopio: .* · Tekijä: tekijä@example.com · Versio: 2\.0\.19/);
  browser.window.updateBackupReminder(latestBackup);
  assert.match(elements.get('lastBackupInfo').textContent,/Tekijä: ei tiedossa/);
  await elements.get('backupData').handlers.click();assert(serverRead);assert(downloaded);assert.equal(recorded,1);assert(elements.get('backupStatus').textContent.includes('Jäsenyyksiä: 2'));

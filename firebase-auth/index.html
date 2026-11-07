@@ -157,7 +157,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.18)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.19)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
       <h2 id="authTitle">Kirjaudu sisään</h2>
@@ -228,10 +228,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=2.0.18"></script>
-  <script src="./calendar-backup.js?v=2.0.18"></script>
-  <script src="./calendar-access.js?v=2.0.18"></script>
-  <script src="./finland-calendar.js?v=2.0.18"></script>
+  <script src="./calendar-pdf.js?v=2.0.19"></script>
+  <script src="./calendar-backup.js?v=2.0.19"></script>
+  <script src="./calendar-access.js?v=2.0.19"></script>
+  <script src="./finland-calendar.js?v=2.0.19"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -297,9 +297,9 @@
         readDocument:getDocFromServer,readMembers:()=>getDocsFromServer(collection(firestore,'households',id,'members')),
         isCurrent:()=>currentUser?.uid===user?.uid&&householdId===id&&remoteStateRef===ref});
     };
-    window.firebaseRecordBackup = async snapshot => {
+    window.firebaseRecordBackup = async (snapshot, version) => {
       if(!currentUser||currentUser.uid!==snapshot.userUid||householdId!==snapshot.calendar.id)throw new Error('Kirjautuminen tai kalenteri vaihtui.');
-      await setDoc(doc(firestore,'households',snapshot.calendar.id,'state','backup'),{lastBackupAt:serverTimestamp(),lastBackupBy:snapshot.userUid,lastBackupByEmail:currentUser.email},{merge:true});
+      await setDoc(doc(firestore,'households',snapshot.calendar.id,'state','backup'),{lastBackupAt:serverTimestamp(),lastBackupBy:snapshot.userUid,lastBackupByEmail:currentUser.email,lastBackupVersion:version},{merge:true});
     };
     function watchBackupReminder() {
       if(stopBackupSync)stopBackupSync();
@@ -308,7 +308,7 @@
         if(snapshot.metadata.hasPendingWrites||snapshot.metadata.fromCache||householdId!==id||currentUser?.uid!==uid)return;
         const backup=snapshot.data();
         const lastBackupByEmail=backup?.lastBackupByEmail||(backup?.lastBackupBy===uid?currentUser.email:'');
-        window.updateBackupReminder?.({calendarId:id,userUid:uid,lastBackupAt:backup?.lastBackupAt??null,lastBackupByEmail});
+        window.updateBackupReminder?.({calendarId:id,userUid:uid,lastBackupAt:backup?.lastBackupAt??null,lastBackupByEmail,lastBackupVersion:backup?.lastBackupVersion});
       },()=>{document.getElementById('lastBackupInfo').textContent='Varmuuskopion ajankohdan tarkistus epäonnistui.';});
     }
     window.firebaseRestoreCalendar = async (payload,expected) => {
@@ -599,7 +599,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.18'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.19'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -613,7 +613,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.18'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.19'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -643,12 +643,13 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'2.0.18');
+          const version='2.0.19';
+          const csv=window.makeCalendarBackupCsv(snapshot,version);
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
           try {
-            await window.firebaseRecordBackup(snapshot);
+            await window.firebaseRecordBackup(snapshot,version);
             message.textContent=`Varmuuskopio ladattu: ${filename}. Jäsenyyksiä: ${snapshot.members.length}${snapshot.membersComplete===false?' (vain oma jäsenyys)':''}. Ajankohta tallennettu.`;
           } catch {message.textContent=`CSV-varmuuskopio ladattu: ${filename}, mutta ajankohdan tallennus epäonnistui. Muistutus jää voimaan.`;}
         } catch(error) {
@@ -659,7 +660,7 @@
       const backupReminder=window.createBackupReminder({confirm:message=>window.confirm(message),makeBackup,storage:window.sessionStorage});
       window.updateBackupReminder = info => {
         const date=info.lastBackupAt?.toDate?info.lastBackupAt.toDate():info.lastBackupAt?new Date(info.lastBackupAt):null;
-        $('lastBackupInfo').textContent=date&&!Number.isNaN(date.getTime())?'Viimeisin varmuuskopio: '+new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(date)+' · Tekijä: '+(info.lastBackupByEmail||'ei tiedossa'):'Viimeisin varmuuskopio: ei vielä kirjattua ajankohtaa.';
+        $('lastBackupInfo').textContent=date&&!Number.isNaN(date.getTime())?'Viimeisin varmuuskopio: '+new Intl.DateTimeFormat('fi-FI',{dateStyle:'short',timeStyle:'short'}).format(date)+' · Tekijä: '+(info.lastBackupByEmail||'ei tiedossa')+(info.lastBackupVersion?' · Versio: '+info.lastBackupVersion:''):'Viimeisin varmuuskopio: ei vielä kirjattua ajankohtaa.';
         backupReminder.update(info).catch(()=>{});
       };
       window.clearBackupReminder=()=>{backupReminder.clear();$('lastBackupInfo').textContent='Viimeisin varmuuskopio: tarkistetaan…';};

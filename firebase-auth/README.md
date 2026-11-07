@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.18` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.19` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Pyhä- ja liputuspäivät
 
@@ -16,7 +16,7 @@ Edellinen kuukausi on valmiiksi valittuna. Voit vaihtaa nykyiseen kuukauteen. Ku
 
 Parametrit-osiossa jokainen aktiivinen kalenterin käyttäjä voi valita **Tee CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä sallitut jäsenyystiedot suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. Vanhat CSV-tiedoston avaamisen toiminnot, paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
 
-CSV-latauksen käynnistyttyä sen ajankohta tallennetaan palvelimen aikaleimalla kalenterin yhteiseen `households/{tunnus}/state/backup`-asiakirjaan (`lastBackupAt`, `lastBackupBy`, `lastBackupByEmail`). Parametreissa kaikille kalenterin jäsenille näkyvät viimeisin kirjattu ajankohta ja kopion tehneen käyttäjän sähköpostiosoite, jos se on tiedossa. Tieto ei riipu selaimen paikallisesta muistista eikä katoa CSV-palautuksessa. Selain ei voi varmistaa, onko ladattu tiedosto lopulta tallennettu levylle; aikaleima tarkoittaa latauksen käynnistämistä. Jos aikaleiman tallennus epäonnistuu, käyttäjälle näytetään ilmoitus ja muistutus jää voimaan.
+CSV-latauksen käynnistyttyä sen ajankohta tallennetaan palvelimen aikaleimalla kalenterin yhteiseen `households/{tunnus}/state/backup`-asiakirjaan (`lastBackupAt`, `lastBackupBy`, `lastBackupByEmail`, `lastBackupVersion`). Parametreissa kaikille kalenterin jäsenille näkyvät viimeisin kirjattu ajankohta ja kopion tehneen käyttäjän sähköpostiosoite sekä varmuuskopion luoneen sovelluksen versio, jos tiedot ovat saatavilla. Tieto ei riipu selaimen paikallisesta muistista eikä katoa CSV-palautuksessa. Selain ei voi varmistaa, onko ladattu tiedosto lopulta tallennettu levylle; aikaleima tarkoittaa latauksen käynnistämistä. Jos aikaleiman tallennus epäonnistuu, käyttäjälle näytetään ilmoitus ja muistutus jää voimaan.
 
 Kaikille aktiivisille käyttäjille kysytään varmuuskopiota, kun edellisestä on kulunut yli 30 vuorokautta. Jos ajankohtaa ei vielä ole, kysytään ensimmäisen kirjatun kopion tekemistä. Peruuttamisen jälkeen samalta käyttäjältä kysytään samassa selainistunnossa aikaisintaan seuraavana päivänä. Tilanne tarkistetaan kirjautumisen jälkeen, sivulle palattaessa ja tunnin välein. Tuore yhteinen varmuuskopio kuittaa muistutuksen kaikilta käyttäjiltä.
 
