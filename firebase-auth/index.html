@@ -157,7 +157,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.26)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.27)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
       <h2 id="authTitle">Kirjaudu sisään</h2>
@@ -229,10 +229,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=2.0.26"></script>
-  <script src="./calendar-backup.js?v=2.0.26"></script>
-  <script src="./calendar-access.js?v=2.0.26"></script>
-  <script src="./finland-calendar.js?v=2.0.26"></script>
+  <script src="./calendar-pdf.js?v=2.0.27"></script>
+  <script src="./calendar-backup.js?v=2.0.27"></script>
+  <script src="./calendar-access.js?v=2.0.27"></script>
+  <script src="./finland-calendar.js?v=2.0.27"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -414,6 +414,20 @@
         if(note.endsWith(' ajoi'))return `${note.slice(0,-5)} ajoi aamulla`;
         return note;
       }
+      const driverDirection = note => note.endsWith(' ajoi aamulla')?'morning':note.endsWith(' ajoi illalla')?'evening':null;
+      function normalizeDayNotes(notes) {
+        if(!Array.isArray(notes))return [];
+        const normalized=notes.filter(note=>typeof note==='string').map(normalizeNote);
+        const latestDriverIndex=new Map();
+        normalized.forEach((note,index)=>{
+          const direction=driverDirection(note);
+          if(direction)latestDriverIndex.set(direction,index);
+        });
+        return normalized.filter((note,index)=>{
+          const direction=driverDirection(note);
+          return !direction||latestDriverIndex.get(direction)===index;
+        });
+      }
       function normalizePayments(payments) {
         const latest=new Map();
         for(const payment of payments) {
@@ -453,7 +467,7 @@
       data.tripPrice=priceFromHistory(data.tripPrices,iso(today),data.tripPrice);
       if (!Array.isArray(data.people)) data.people = [];
       if (!data.trips || typeof data.trips !== 'object') data.trips = {};
-      for (const entry of Object.values(data.trips)) if (Array.isArray(entry.notes)) entry.notes=entry.notes.map(normalizeNote);
+      for (const entry of Object.values(data.trips)) if (Array.isArray(entry.notes)) entry.notes=normalizeDayNotes(entry.notes);
       let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
       let selected = iso(today);
       const $ = id => document.getElementById(id);
@@ -467,6 +481,7 @@
         if(!Array.isArray(data.payments))data.payments=[];
         data.payments=normalizePayments(data.payments);
         if(!data.trips||typeof data.trips!=='object')data.trips={};
+        for(const entry of Object.values(data.trips))if(Array.isArray(entry.notes))entry.notes=normalizeDayNotes(entry.notes);
         data.tripPrices=normalizeTripPrices(Array.isArray(data.tripPrices)?data.tripPrices:[],data.tripPrice);
         localStorage.setItem(STORAGE_KEY,JSON.stringify(data));render();status('Käyttäjän muutokset synkronoitu.');
       };
@@ -478,7 +493,7 @@
         let balance=0;
         for(const [date,entry] of Object.entries(state.trips)) {
           if(!date.startsWith(`${month}-`))continue;
-          const notes=Array.isArray(entry.notes)?entry.notes:[];
+          const notes=normalizeDayNotes(entry.notes);
           const driverRides=notes.map(driverName).filter(Boolean).filter(name=>name.trim().toLocaleLowerCase('fi-FI')===normalizedName).length;
           const to=Array.isArray(entry.to)&&entry.to.includes(personIndex)?1:0;
           const home=Array.isArray(entry.home)&&entry.home.includes(personIndex)?1:0;
@@ -523,7 +538,6 @@
         const payment=monthlyPayment(state.people[personIndex],month,state);
         return Math.round((carryForward(personIndex,month,state)+monthlyBalance(personIndex,month,state)+(payment?.amount??0))*100)/100;
       }
-      const driverDirection = note => note.endsWith(' ajoi aamulla')?'morning':note.endsWith(' ajoi illalla')?'evening':null;
       const driverName = note => driverDirection(note)?note.slice(0,-12).trim():null;
       const trip = (date, way) => {
         if (!data.trips[date]) data.trips[date] = { to:[], home:[] };
@@ -604,7 +618,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.26'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.27'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -618,7 +632,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.26'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.27'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -648,7 +662,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const version='2.0.26';
+          const version='2.0.27';
           const csv=window.makeCalendarBackupCsv(snapshot,version);
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
@@ -827,7 +841,12 @@
       }
       $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const name=data.people[Number(b.dataset.remove)];if(name&&!data.inactivePeople.includes(name))data.inactivePeople.push(name);save();render()});
       $('detail').addEventListener('change',e=>{
-        const addNote=note=>{if(!data.trips[selected])data.trips[selected]={to:[],home:[]};const notes=Array.isArray(data.trips[selected].notes)?data.trips[selected].notes:[];if(!notes.includes(note))data.trips[selected].notes=[...notes,note];save();render();};
+        const addNote=note=>{
+          const entry=data.trips[selected]??={to:[],home:[]};
+          const notes=normalizeDayNotes(entry.notes);
+          if(!notes.includes(note))entry.notes=normalizeDayNotes([...notes,note]);
+          save();render();
+        };
         if(e.target.id==='dayNoteSelect'||e.target.id==='eveningNoteSelect'){
           const evening=e.target.id==='eveningNoteSelect', note=e.target.value;
           if(note==='Toisen kyydissä'){const rider=$(evening?'eveningRiderSelect':'otherRiderSelect');rider.hidden=false;rider.focus();try{rider.showPicker();}catch{rider.click();}return;}

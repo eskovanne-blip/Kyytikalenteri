@@ -165,5 +165,16 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  const mixed={...ledger,payments:[{person:'Väinö',month,amount:-5,outgoing:7}]};
  const mixedCsv=makeCalendarBackupCsv({...snapshot,payload:mixed},'F_2.0.29');
  assert.deepEqual(parseCalendarBackupCsv(mixedCsv).payload.payments,mixed.payments);
+ const todayKey=month+'-'+String(now.getDate()).padStart(2,'0');
+ browser.window.applyFirebaseCalendar({...ledger,payments:[],trips:{
+   [todayKey]:{to:[],home:[],notes:['Anna ajoi aamulla','Väinö ajoi aamulla','Väinö ajoi illalla']}
+ }});
+ assert.doesNotMatch(get('detail').innerHTML,/Anna ajoi aamulla/);
+ assert.match(get('detail').innerHTML,/Väinö ajoi aamulla/);
+ get('detail').handlers.change({target:{id:'otherRiderSelect',value:'Anna'}});
+ assert.match(get('detail').innerHTML,/Anna ajoi aamulla/);
+ assert.doesNotMatch(get('detail').innerHTML,/Väinö ajoi aamulla/);
+ assert.match(get('detail').innerHTML,/Väinö ajoi illalla/);
+ assert.equal((get('monthReport').innerHTML.match(/>5,00€</g)||[]).length,2);
  console.log('PASS: backup/restore round trips, malformed CSV rejection, legacy format, admin and session checks, concurrent edits, offline failures, UI confirmation cancel and restore, no user-account writes.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
