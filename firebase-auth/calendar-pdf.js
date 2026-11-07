@@ -7,7 +7,8 @@
     const euro = n => Number(n).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const clean = value => String(value ?? '').replace(/[\u0000-\u001f]/g,' ').replace(/\u2212/g,'-');
     const money = value => Number(value)<0 ? 'Maksettavaa '+euro(-value) : Number(value)>0 ? 'Hyvitystä '+euro(value) : euro(0);
-    const reportTitle='Kyydit '+new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));
+    const monthLabel=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));
+    const reportTitle=monthLabel[0].toLocaleUpperCase('fi-FI')+monthLabel.slice(1);
     const reportDate=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(generatedAt);
     const reportSubtitle='Kyytikalenteri '+clean(version)+' | Ajopäivä '+reportDate;
     const green=[35,107,82], ink=[32,43,40], muted=[105,117,112];
