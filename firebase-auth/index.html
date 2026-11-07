@@ -153,7 +153,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.4)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.5)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -225,9 +225,9 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=2.0.4"></script>
-  <script src="./calendar-backup.js?v=2.0.4"></script>
-  <script src="./calendar-access.js?v=2.0.4"></script>
+  <script src="./calendar-pdf.js?v=2.0.5"></script>
+  <script src="./calendar-backup.js?v=2.0.5"></script>
+  <script src="./calendar-access.js?v=2.0.5"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -583,7 +583,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.4'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.5'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -597,7 +597,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.4'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.5'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -627,7 +627,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'2.0.4');
+          const csv=window.makeCalendarBackupCsv(snapshot,'2.0.5');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -708,7 +708,7 @@
           if(data.inactivePeople.includes(person)&&balance===0&&!payment)return [];
           const disabled=paymentPending||(!payment&&balance===0)?'disabled':'';
           const outstanding=payment&&Math.abs(payment.amount)<Math.abs(balance-payment.amount);
-          const balanceClass=balance===0?'balance-nonnegative':outstanding?'balance-negative':'';
+          const balanceClass=balance===0?'balance-nonnegative':(balance<0||outstanding)?'balance-negative':'';
           return [`<tr><td><button class="secondary" type="button" data-payment-person="${index}" ${disabled}>${safe(person)}</button></td><td class="balance-nonnegative">${payment?paymentDisplay(payment):'–'}</td><td class="payment-value ${balanceClass}${balance>0?' payment-value-positive':''}">${euro(balance)} €</td></tr>`];
         });
         $('paymentBalances').innerHTML=rows.length
