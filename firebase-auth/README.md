@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.15` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.16` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Pyhä- ja liputuspäivät
 
