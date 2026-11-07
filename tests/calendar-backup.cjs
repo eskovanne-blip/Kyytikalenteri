@@ -189,12 +189,25 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
    get('tripPriceForm').handlers.submit({preventDefault(){}});
  };
  setTripPrice('2.00');
- assert.match(get('tripPriceInfo').textContent,/Nykyinen hinta: 1,00 €.*Ajastettu: 2,00 €/);
+ assert.match(get('tripPriceInfo').textContent,/Nykyinen hinta: 1,00 €/);
+ assert.match(get('scheduledTripPrices').innerHTML,/Ajastettu: 2,00 €/);
  assert.match(get('monthReport').innerHTML,/>1,00€<\/td>/);
  get('next').handlers.click();
  assert.match(get('monthReport').innerHTML,/>2,00€<\/td>/);
  setTripPrice('1.00');
- assert.match(get('tripPriceInfo').textContent,/Ajastettu: 1,00 €/);
+ assert.match(get('scheduledTripPrices').innerHTML,/Ajastettu: 1,00 €/);
+ assert.doesNotMatch(get('monthReport').innerHTML,/>2,00€<\/td>/);
+ setTripPrice('2.00');
+ const removeScheduledPrice=()=>get('scheduledTripPrices').handlers.click({
+   target:{closest:()=>({dataset:{removeTripPrice:nextKey}})}
+ });
+ browser.window.confirm=()=>false;
+ removeScheduledPrice();
+ assert.match(get('scheduledTripPrices').innerHTML,/Ajastettu: 2,00 €/);
+ browser.window.confirm=()=>true;
+ removeScheduledPrice();
+ assert.equal(get('scheduledTripPrices').innerHTML,'');
+ assert.match(get('tripPriceInfo').textContent,/Nykyinen hinta: 1,00 €/);
  assert.doesNotMatch(get('monthReport').innerHTML,/>2,00€<\/td>/);
  console.log('PASS: backup/restore round trips, malformed CSV rejection, legacy format, admin and session checks, concurrent edits, offline failures, UI confirmation cancel and restore, no user-account writes.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

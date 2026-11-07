@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.28` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.29` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Pyhä- ja liputuspäivät
 
@@ -14,7 +14,7 @@ Päivälle voi merkitä yhden aamukuskin ja yhden iltakuskin. Uusi valinta korva
 
 ## Ajosuunnan hinta
 
-Parametreissa näkyvät nykyinen hinta ja ajastetut hinnat. Syötä uusi hinta ja valitse voimaantulopäivä. Oletuksena on seuraavan kuukauden ensimmäinen päivä. Kyyti lasketaan sen päivänä voimassa olleella hinnalla. Samalle voimaantulopäivälle tallennettu uusi hinta korvaa aiemman hinnan.
+Parametreissa näkyvät nykyinen hinta ja ajastetut hinnat. Syötä uusi hinta ja valitse voimaantulopäivä. Oletuksena on seuraavan kuukauden ensimmäinen päivä. Kyyti lasketaan sen päivänä voimassa olleella hinnalla. Samalle voimaantulopäivälle tallennettu uusi hinta korvaa aiemman hinnan. Voit poistaa ajastetun muutoksen ennen sen voimaantuloa.
 
 ## Maksujen hallinta
 
