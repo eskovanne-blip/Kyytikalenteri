@@ -76,7 +76,7 @@
     .payments-button:hover { background:#4c67ed; border-color:#4c67ed }
     .payment-panel { display:grid; gap:7px; margin-top:8px }
     .payment-panel[hidden] { display:none }
-    .payment-panel select { width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:#fff; color:var(--ink) }
+    .payment-panel select,.payment-panel input { width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:#fff; color:var(--ink) }
     .payment-balance { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px }
     input:focus { border-color:var(--green) }
     .primary { background:var(--green); color:#fff; border-color:var(--green); font-weight:650; padding:9px 13px }
@@ -147,7 +147,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(F_2.0.30)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(F_2.0.31)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row" id="signedInRow" hidden><strong id="headerUserEmail"></strong><button class="secondary" id="signOutButton" type="button">Kirjaudu ulos</button></div></div>
       <div class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
@@ -192,6 +192,13 @@
               <label for="paymentMonth">Valitse kuukausi</label>
               <select id="paymentMonth"></select>
               <div id="paymentBalances"></div>
+              <form id="paymentEditor" hidden>
+                <p id="paymentQuestion"></p>
+                <label for="paymentAmount">Summa (€)</label>
+                <input id="paymentAmount" type="number" min="0.01" step="0.01" inputmode="decimal" required>
+                <button class="primary" id="confirmPayment" type="submit">Merkitse maksetuksi</button>
+                <button class="secondary" id="cancelPayment" type="button">Peruuta</button>
+              </form>
               <p class="hint" id="paymentStatus" role="status"></p>
             </div>
           </div>
@@ -210,9 +217,9 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=F_2.0.30"></script>
-  <script src="./calendar-backup.js?v=F_2.0.30"></script>
-  <script src="./calendar-access.js?v=F_2.0.30"></script>
+  <script src="./calendar-pdf.js?v=F_2.0.31"></script>
+  <script src="./calendar-backup.js?v=F_2.0.31"></script>
+  <script src="./calendar-access.js?v=F_2.0.31"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -568,7 +575,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.30'});
+            const pdf=window.createCalendarPdf({title,calendarName:$('headerHouseholdName').textContent,month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.31'});
             pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -582,7 +589,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({title,calendarName:$('headerHouseholdName').textContent,month,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.30'});
+            const files=await window.createCalendarImages({title,calendarName:$('headerHouseholdName').textContent,month,people:data.people,trips:data.trips,summary:activeCounts,version:'F_2.0.31'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -612,7 +619,7 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.30');
+          const csv=window.makeCalendarBackupCsv(snapshot,'F_2.0.31');
           const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -679,7 +686,11 @@
         data.tripPrices=normalizeTripPrices(data.tripPrices,oldPrice);data.tripPrice=priceFromHistory(data.tripPrices,iso(today),oldPrice);
         save();renderReport();renderPaymentBalances();input.value=data.tripPrice.toFixed(2);status(`Matkustetun suunnan arvo tallennettu alkaen ${effectiveDate}.`);
       });
-      let paymentPending=false;
+      let paymentPending=false, paymentDraft=null;
+      function closePaymentEditor() {
+        paymentDraft=null;
+        $('paymentEditor').hidden=true;
+      }
       function renderPaymentBalances() {
         if($('paymentPanel').hidden)return;
         const month=$('paymentMonth').value;
@@ -697,15 +708,17 @@
         const panel=$('paymentPanel');
         panel.hidden=!panel.hidden;
         $('paymentsButton').setAttribute('aria-expanded',String(!panel.hidden));
+        closePaymentEditor();
         if(panel.hidden)return;
-        const now=new Date(), current=iso(now).slice(0,7);
+        const current=iso(new Date()).slice(0,7), previous=previousMonth(current);
         const format=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'});
-        $('paymentMonth').innerHTML='<option value="" selected disabled>Valitse kuukausi</option>'+
-          [previousMonth(current),current].map(month=>`<option value="${month}">${format.format(new Date(month+'-01T12:00:00'))}</option>`).join('');
+        $('paymentMonth').innerHTML=[previous,current].map(month=>`<option value="${month}">${format.format(new Date(month+'-01T12:00:00'))}</option>`).join('');
+        $('paymentMonth').value=previous;
         $('paymentStatus').textContent='';
         renderPaymentBalances();
       });
       $('paymentMonth').addEventListener('change',()=>{
+        closePaymentEditor();
         $('paymentStatus').textContent='';
         renderPaymentBalances();
       });
@@ -713,13 +726,33 @@
         const button=event.target.closest('[data-payment-person]');
         if(!button||paymentPending)return;
         const index=Number(button.dataset.paymentPerson), person=data.people[index], month=$('paymentMonth').value;
-        const balance=paymentBalance(index,month), amount=euro(Math.abs(balance))+' €';
-        const payment=monthlyPayment(person,month);
+        const balance=paymentBalance(index,month), payment=monthlyPayment(person,month);
         if(!payment&&!balance)return;
-        const question=payment?`Poistetaanko henkilön ${person} maksumerkintä ja palautetaanko alkuperäinen saldo?`:balance<0?`Onko ${person} maksanut summan ${amount}?`:`Oletko maksanut henkilölle ${person} summan ${amount}?`;
-        if(!window.confirm(question))return;
+        closePaymentEditor();
+        if(payment) {
+          if(window.confirm(`Poistetaanko henkilön ${person} maksumerkintä ja palautetaanko alkuperäinen saldo?`))
+            await recordPayment({person,month,balance,payment});
+          return;
+        }
+        paymentDraft={person,month,balance};
+        $('paymentQuestion').textContent=balance<0
+          ? `Merkitäänkö summa henkilön ${person} maksamaksi?`
+          : `Merkitäänkö summa maksetuksi henkilölle ${person}?`;
+        $('paymentAmount').value=Math.abs(balance).toFixed(2);
+        $('paymentEditor').hidden=false;
+        $('paymentAmount').focus();
+      });
+      $('cancelPayment').addEventListener('click',closePaymentEditor);
+      $('paymentEditor').addEventListener('submit',async event=>{
+        event.preventDefault();
+        if(!paymentDraft||paymentPending)return;
+        const cents=Math.round(Number($('paymentAmount').value)*100);
+        if(!Number.isSafeInteger(cents)||cents<=0)return;
+        await recordPayment(paymentDraft,cents/100);
+      });
+      async function recordPayment({person,month,balance,payment}, amount) {
         paymentPending=true;
-        $('paymentMonth').disabled=true;
+        for(const id of ['paymentMonth','paymentAmount','confirmPayment','cancelPayment'])$(id).disabled=true;
         $('paymentStatus').textContent=payment?'Poistetaan maksumerkintää…':'Tallennetaan maksua…';
         renderPaymentBalances();
         try {
@@ -731,17 +764,18 @@
               paymentBalance(currentIndex,month,state)!==balance)
               throw new Error('Saldo tai maksumerkintä muuttui. Valitse henkilö uudelleen.');
             if(payment)return state.payments.filter(item=>item.person!==person||item.month!==month);
-            return [...state.payments,{person,month,amount:-balance}];
+            return [...state.payments,{person,month,amount:balance<0?amount:-amount}];
           });
+          closePaymentEditor();
           $('paymentStatus').textContent=payment?'Maksumerkintä poistettu. Saldo palautettu.':'Maksu kirjattu.';
         } catch(error) {
           $('paymentStatus').textContent=error.code?'Maksun tallennus epäonnistui. Yritä uudelleen.':error.message;
         } finally {
           paymentPending=false;
-          $('paymentMonth').disabled=false;
+          for(const id of ['paymentMonth','paymentAmount','confirmPayment','cancelPayment'])$(id).disabled=false;
           renderPaymentBalances();
         }
-      });
+      }
       $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const name=data.people[Number(b.dataset.remove)];if(name&&!data.inactivePeople.includes(name))data.inactivePeople.push(name);save();render()});
       $('detail').addEventListener('change',e=>{
         const addNote=note=>{if(!data.trips[selected])data.trips[selected]={to:[],home:[]};const notes=Array.isArray(data.trips[selected].notes)?data.trips[selected].notes:[];if(!notes.includes(note))data.trips[selected].notes=[...notes,note];save();render();};
