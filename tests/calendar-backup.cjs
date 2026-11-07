@@ -12,7 +12,7 @@ assert(csv.startsWith('\uFEFF"type","date","direction","person"\r\n'));
 const parsed=JSON.parse(JSON.stringify(context.parseCsv(csv)));
 for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(parsed[key],payload[key],key+' legacy round trip');
 assert(csv.includes('"member","u1","owner"'));assert(csv.includes('"member","u2","member"'));assert(csv.includes('""active"":false'));
-assert(!csv.includes('password'));assert(csv.includes('F_2.0.16'));
+assert(!csv.includes('password'));assert(csv.includes('"parameter","version","","F_2.0.16"'));
 const restored=parseCalendarBackupCsv(csv);
 for(const key of ['people','inactivePeople','payments','tripPrices','trips'])assert.deepEqual(restored.payload[key],payload[key],key+' restore round trip');
 assert.equal(restored.calendar.id,'cal1');assert.equal(restored.calendar.appVersion,'F_2.0.16');assert.equal(restored.memberCount,2);

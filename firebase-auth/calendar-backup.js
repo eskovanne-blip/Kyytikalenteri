@@ -131,7 +131,7 @@
 
   root.makeCalendarBackupCsv = function({payload,calendar,members},version,exportedAt=new Date()) {
     if(!Array.isArray(payload.people)||!payload.trips||typeof payload.trips!=='object'||!Array.isArray(members))throw new Error('Kalenterin varmuuskopioitavat tiedot ovat puutteelliset.');
-    const rows=[['type','date','direction','person'],['parameter','version','','1.1.22']];
+    const rows=[['type','date','direction','person'],['parameter','version','',version]];
     const prices=new Map();
     for(const rate of payload.tripPrices||[])prices.set(rate.date,Number(rate.price));
     if(!prices.has('0001-01-01'))prices.set('0001-01-01',Number(payload.tripPrice??1));
