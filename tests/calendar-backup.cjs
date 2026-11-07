@@ -107,8 +107,10 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.equal(ledger.payments.find(p=>p.person==='Anna').amount,3.5);
  assert.equal(ledger.payments.find(p=>p.person==='Väinö').amount,-5);
  assert(get('monthReport').innerHTML.includes('5,00 €*'));
- assert.equal((get('paymentBalances').innerHTML.match(/Uusi saldo 0,00 €/g)||[]).length,1);
- assert.match(get('paymentBalances').innerHTML,/Uusi saldo [−-]1,50/);
+ assert.match(get('paymentBalances').innerHTML,/>Suoritus<.*>Uusi saldo</);
+ assert.match(get('paymentBalances').innerHTML,/class="balance-nonnegative">3,50 €/);
+ assert.match(get('paymentBalances').innerHTML,/payment-value balance-nonnegative">0,00 €/);
+ assert.match(get('paymentBalances').innerHTML,/payment-value balance-negative">[−-]1,50 €/);
  browser.window.confirm=question=>{assert.match(question,/Poistetaanko henkilön Anna maksumerkintä.*alkuperäinen saldo/);return false;};
  await choose(0);
  assert.equal(writesToLedger,2);
@@ -118,7 +120,7 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.equal(writesToLedger,4);
  assert.equal(ledger.payments.length,0);
  assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
- assert.doesNotMatch(get('paymentBalances').innerHTML,/Uusi saldo/);
+ assert.doesNotMatch(get('paymentBalances').innerHTML,/class="balance-nonnegative">[0-9]/);
  const mixed={...ledger,payments:[{person:'Väinö',month,amount:-5,outgoing:7}]};
  const mixedCsv=makeCalendarBackupCsv({...snapshot,payload:mixed},'F_2.0.29');
  assert.deepEqual(parseCalendarBackupCsv(mixedCsv).payload.payments,mixed.payments);
