@@ -81,7 +81,7 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  let ledger={...payload,people:['Anna','Väinö'],inactivePeople:[],tripPrice:5,
    tripPrices:[{date:'0001-01-01',price:5}],
    payments:[],
-   trips:{[month+'-01']:{to:[0],home:[],notes:['Väinö ajoi aamulla']}}};
+   trips:{[month+'-'+String(now.getDate()).padStart(2,'0')]:{to:[0],home:[],notes:['Väinö ajoi aamulla']}}};
  browser.window.applyFirebaseCalendar(ledger);
  const get=id=>elements.get(id);
  get('paymentPanel').hidden=true;
@@ -93,6 +93,15 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  get('paymentMonth').handlers.change();
  assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
  assert.match(get('paymentBalances').innerHTML,/5,00/);
+ const togglePassenger=checked=>get('detail').handlers.change({target:{
+   closest:()=>({checked,dataset:{way:'to',person:'0'}})
+ }});
+ togglePassenger(false);
+ assert.doesNotMatch(get('monthReport').innerHTML,/[−-]5,00/);
+ assert.doesNotMatch(get('paymentBalances').innerHTML,/[−-]5,00/);
+ togglePassenger(true);
+ assert.match(get('monthReport').innerHTML,/[−-]5,00/);
+ assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
  let writesToLedger=0;
  browser.window.firebaseRecordPayment=async change=>{
    const payments=change(ledger);
