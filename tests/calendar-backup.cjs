@@ -54,6 +54,11 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  let recorded=0;
  const browser={document,localStorage:{getItem:()=>JSON.stringify(payload),setItem(){}},Intl,Date,console,setInterval(){},setTimeout:fn=>fn(),Blob,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},window:{sessionStorage:{getItem(){},setItem(){}},createBackupReminder,firebaseRecordBackup:async()=>{assert(downloaded,'Timestamp must follow CSV download');recorded++;},firebaseReadBackup:async()=>{serverRead=true;return snapshot;},makeCalendarBackupCsv,firebasePersistCalendar:async()=>{}}};
  vm.createContext(browser);const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];vm.runInContext(scripts.at(-1)[1],browser);
+ const latestBackup={calendarId:'cal1',userUid:'u1',lastBackupAt:new Date().toISOString()};
+ browser.window.updateBackupReminder({...latestBackup,lastBackupByEmail:'tekijä@example.com'});
+ assert.match(elements.get('lastBackupInfo').textContent,/Viimeisin varmuuskopio: .* · Tekijä: tekijä@example.com/);
+ browser.window.updateBackupReminder(latestBackup);
+ assert.match(elements.get('lastBackupInfo').textContent,/Tekijä: ei tiedossa/);
  await elements.get('backupData').handlers.click();assert(serverRead);assert(downloaded);assert.equal(recorded,1);assert(elements.get('backupStatus').textContent.includes('Jäsenyyksiä: 2'));
  downloaded=false;browser.window.firebaseReadBackup=async()=>{throw Object.assign(Error('offline'),{code:'unavailable'});};
  await elements.get('backupData').handlers.click();assert(!downloaded);assert.equal(recorded,1);assert(elements.get('backupStatus').textContent.includes('Varmuuskopiota ei luotu'));assert.equal(elements.get('backupData').disabled,false);
