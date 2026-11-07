@@ -1,8 +1,8 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.26` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.27` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
-## Varmuuskopio data
+## Varmuuskopiointi ja palautus
 
 Parametrit-osiossa jokainen aktiivinen kalenterin käyttäjä voi valita **Tee CSV-varmuuskopio**. Toiminto odottaa selaimesta käynnistetyt Firebase-tallennukset ja lukee kalenterin sekä sallitut jäsenyystiedot suoraan Firestore-palvelimelta. Ilman yhteyttä tai tarvittavia oikeuksia tiedostoa ei luoda. Vanhat CSV-tiedoston avaamisen toiminnot, paikallisen tiedoston jatkuva tallennus ja WhatsApp-lähetyksen varmuuskopiokysymys on poistettu Firebase-versiosta.
 
