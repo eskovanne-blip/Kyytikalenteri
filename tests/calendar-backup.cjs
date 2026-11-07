@@ -151,6 +151,17 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.equal(ledger.payments.length,0);
  assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
  assert.doesNotMatch(get('paymentBalances').innerHTML,/class="balance-nonnegative">[0-9]/);
+ const earlier=new Date(now.getFullYear(),now.getMonth()-2,1);
+ const earlierMonth=earlier.getFullYear()+'-'+String(earlier.getMonth()+1).padStart(2,'0');
+ browser.window.applyFirebaseCalendar({...ledger,
+   trips:{[earlierMonth+'-01']:{to:[0],home:[],notes:['Väinö ajoi aamulla']}},
+   payments:[{person:'Anna',month:earlierMonth,amount:2},{person:'Väinö',month:earlierMonth,amount:-2}]
+ });
+ const summary=get('monthReport').innerHTML;
+ assert.match(summary,/<td>[−-]3,00€<\/td><td class="balance-negative">[−-]3,00€/);
+ assert.match(summary,/<td>3,00€<\/td><td class="balance-nonnegative">3,00€/);
+ assert.match(get('paymentBalances').innerHTML,/balance-negative">[−-]3,00 €/);
+ assert.match(get('paymentBalances').innerHTML,/payment-value-positive">3,00 €/);
  const mixed={...ledger,payments:[{person:'Väinö',month,amount:-5,outgoing:7}]};
  const mixedCsv=makeCalendarBackupCsv({...snapshot,payload:mixed},'F_2.0.29');
  assert.deepEqual(parseCalendarBackupCsv(mixedCsv).payload.payments,mixed.payments);

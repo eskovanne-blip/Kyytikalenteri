@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.25` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.26` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Pyhä- ja liputuspäivät
 
@@ -10,7 +10,7 @@ Lähteet ovat Yliopiston almanakkatoimiston [juhlapäivät](https://almanakka.he
 
 ## Maksujen hallinta
 
-Edellinen kuukausi on valmiiksi valittuna. Voit vaihtaa nykyiseen kuukauteen. Kun valitset henkilön, voit muokata ehdotettua summaa ennen maksun vahvistamista. Valitse henkilön nimi uudelleen, jos haluat täydentää osasuoritusta tai poistaa kuukauden maksumerkinnän ja palauttaa saldon. Suoritus-sarakkeessa tähdellä merkitty summa tarkoittaa henkilölle maksettua summaa. Jos samalle kuukaudelle on kirjattu maksuja molempiin suuntiin, Suoritus näyttää molemmat summat.
+Kuukauden loppusaldo siirtyy seuraavan kuukauden pohjasaldoksi samalla etumerkillä. Edellinen kuukausi on valmiiksi valittuna. Voit vaihtaa nykyiseen kuukauteen. Kun valitset henkilön, voit muokata ehdotettua summaa ennen maksun vahvistamista. Valitse henkilön nimi uudelleen, jos haluat täydentää osasuoritusta tai poistaa kuukauden maksumerkinnän ja palauttaa saldon. Suoritus-sarakkeessa tähdellä merkitty summa tarkoittaa henkilölle maksettua summaa. Jos samalle kuukaudelle on kirjattu maksuja molempiin suuntiin, Suoritus näyttää molemmat summat.
 
 ## Varmuuskopiointi ja palautus
 
