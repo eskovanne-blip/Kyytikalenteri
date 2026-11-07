@@ -1,6 +1,12 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `2.0.8` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.9` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+
+## Pyhä- ja liputuspäivät
+
+Kuukausikalenterissa ja päivän tiedoissa näkyvät Suomen valtakunnalliset pyhäpäivät, juhannus- ja jouluaatto sekä viralliset ja vakiintuneet liputuspäivät. Toistuvat päivät lasketaan nykyisten sääntöjen mukaan. Yksittäiset valtakunnalliset liputuspäivät lisätään julkaistujen päivämäärien perusteella. Kalenteripäivät ovat näkymän tietoja, eivät kyytimerkintöjä.
+
+Lähteet ovat Yliopiston almanakkatoimiston [juhlapäivät](https://almanakka.helsinki.fi/fi/liputus-ja-juhlapaivat/), [liputuspäivät](https://almanakka.helsinki.fi/fi/liputus-ja-juhlapaivat/liputuspaivat-suomessa/) ja [vuoden 2027 liputuspäivät](https://almanakka.helsinki.fi/fi/liputus-ja-juhlapaivat/liputuspaivat-2027/).
 
 ## Maksujen hallinta
 
