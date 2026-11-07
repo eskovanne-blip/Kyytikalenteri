@@ -1,6 +1,6 @@
 # Koulukyydit – Firebase-versio
 
-Versionumerointi `F_2.0.31` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `F_2.0.32` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Maksujen hallinta
 
