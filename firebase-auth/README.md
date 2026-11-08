@@ -1,6 +1,6 @@
 # Kyytikalenteri – Firebase-versio
 
-Versionumerointi `2.0.30` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Sovelluksen versio on `2.0.30`. GitHub Pagesin etusivu ohjaa tähän Firebase-sovellukseen.
 
 ## Pyhä- ja liputuspäivät
 
