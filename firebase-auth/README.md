@@ -1,6 +1,6 @@
-# Koulukyydit – Firebase-versio
+# Kyytikalenteri – Firebase-versio
 
-Versionumerointi `2.0.29` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
+Versionumerointi `2.0.30` kuuluu vain Firebase-versiolle. CSV-versionumero pysyy erillisenä.
 
 ## Pyhä- ja liputuspäivät
 
@@ -44,7 +44,7 @@ Omistajan ja pääkäyttäjän (`admin`) varmuuskopiossa ovat kaikki kalenterin 
 
 Hyväksytty palautus korvaa kalenterin henkilöt, päivämerkinnät, maksut ja hintahistorian kaikilta kuukausilta. Kalenterin käyttäjäjäsenyyksiä, tunnuksia ja käyttöoikeuksia ei palauteta tai muuteta. Alkuperäisen muodon CSV:t sekä uudet varmuuskopiot käyvät palautukseen. Palautus kirjoitetaan Firestore-transaktiolla ja keskeytetään, jos kalenteri on muuttunut vahvistuskysymyksen aikana, kirjautuminen vaihtuu, oikeudet puuttuvat tai yhteys ei toimi. Paikallinen kalenteri päivitetään onnistuneen tallennuksen jälkeen.
 
-Kuukausiyhteenvedon alareunan **Tee PDF** lataa valitun kuukauden A4-pystyraportin. Raportissa näkyvät samat maksut ja saldot kuin kuukausiyhteenvedossa sekä päivien henkilöt ja merkinnät aamu- ja iltasarakkeissa. Päivät ilman merkintöjä jätetään pois. Päivätaulukko tiivistyy tarvittaessa: tavallinen 20 koulupäivän kuukausi mahtuu yhdelle sivulle. Poikkeuksellisen pitkä sisältö jatkuu lisäsivuille ilman tietojen poisjättämistä. Loma ja poissaolo näytetään kerran aamun sarakkeessa. Uudet Oma kyyti -merkinnät näkyvät siinä sarakkeessa, jolle ne valittiin. Vanha Oma kyyti -merkintä ilman ajosuuntatietoa näkyy molemmissa sarakkeissa.
+Kuukausiyhteenvedon alareunan **Tee PDF** lataa valitun kuukauden A4-pystyraportin. Raportissa näkyvät samat maksut ja saldot kuin kuukausiyhteenvedossa sekä päivien henkilöt ja merkinnät aamu- ja iltasarakkeissa. Päivät ilman merkintöjä jätetään pois. Päivätaulukko tiivistyy tarvittaessa: tavallinen 20 arkipäivän kuukausi mahtuu yhdelle sivulle. Poikkeuksellisen pitkä sisältö jatkuu lisäsivuille ilman tietojen poisjättämistä. Loma ja poissaolo näytetään kerran aamun sarakkeessa. Uudet Oma kyyti -merkinnät näkyvät siinä sarakkeessa, jolle ne valittiin. Vanha Oma kyyti -merkintä ilman ajosuuntatietoa näkyy molemmissa sarakkeissa.
 
 PDF luodaan selaimessa paikallisesti kirjastolla jsPDF 4.2.1 (`vendor/jspdf.umd.min.js`, MIT-lisenssi tiedostossa `vendor/jspdf-LICENSE.txt`). Raporttitietoja ei lähetetä PDF-palveluun.
 

@@ -78,7 +78,7 @@
         const names=(Array.isArray(entry[way])?entry[way]:[]).map(i=>people[i]).filter(v=>v!==undefined);
         const relevant=notes.filter(note=>{
           if(way==='to')return !note.endsWith(' ajoi illalla')&&note!=='Oma kyyti iltapäivällä';
-          return !note.endsWith(' ajoi aamulla')&&note!=='Oma kyyti aamulla'&&note!=='Loma'&&note!=='Poissa koulusta/ei kuljettu'&&note!=='Poissa';
+          return !note.endsWith(' ajoi aamulla')&&note!=='Oma kyyti aamulla'&&note!=='Loma'&&note!=='Poissa / ei kuljettu'&&note!=='Poissa';
         });
         const runs=[...names.map(name=>({text:name,bold:false})),...relevant.map(note=>({text:note==='Oma kyyti aamulla'||note==='Oma kyyti iltapäivällä'?'Oma kyyti':note,bold:true}))];
         return runs.length?runs.flatMap((run,i)=>i?[{text:'; ',bold:false},run]:[run]):[{text:'-',bold:false}];
@@ -129,7 +129,7 @@
     for(let i=0;i<pages.length;i++){
       const canvas=pages[i];
       const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('PNG-kuvan luonti epäonnistui.')),'image/png'));
-      files.push(new File([blob],`Koulukyydit_${options.month}${pages.length>1?'_'+(i+1):''}.png`,{type:'image/png'}));
+      files.push(new File([blob],`Kyytikalenteri_${options.month}${pages.length>1?'_'+(i+1):''}.png`,{type:'image/png'}));
       canvas.width=canvas.height=0;
     }
     return files;

@@ -158,7 +158,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.29)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
+      <div class="header-main"><h1>Kyytikalenteri <span class="version">(2.0.30)</span></h1><span id="headerHouseholdName" hidden>Yhteinen kalenteri</span><div class="account-row"><button class="secondary" id="signOutButton" type="button" hidden>Kirjaudu ulos</button><strong id="headerUserEmail"></strong><span class="save-state" id="saveState" aria-live="polite">Kirjaudu sisään käyttääksesi kalenteria</span></div></div>
     </header>
     <section class="card panel" id="authPanel" style="max-width:560px;margin:0 auto 20px">
       <h2 id="authTitle">Kirjaudu sisään</h2>
@@ -188,7 +188,7 @@
         </div>
         <div class="weekdays"><div>Ma</div><div>Ti</div><div>Ke</div><div>To</div><div>Pe</div><div>La</div><div>Su</div></div>
         <div class="days" id="days"></div>
-        <div class="legend"><span><b class="legend-to">A</b> kotoa kouluun</span><span><b class="legend-home">I</b> koulusta kotiin</span><span><b class="holiday">Pyhäpäivä</b></span><span><b class="eve">Aattopäivä</b></span><span><i class="flag-symbol" aria-hidden="true"></i>Liputuspäivä</span><span>Valitse päivä ja rastita matkustajat.</span></div>
+        <div class="legend"><span><b class="legend-to">A</b> aamulla</span><span><b class="legend-home">I</b> iltapäivällä</span><span><b class="holiday">Pyhäpäivä</b></span><span><b class="eve">Aattopäivä</b></span><span><i class="flag-symbol" aria-hidden="true"></i>Liputuspäivä</span><span>Valitse päivä ja rastita matkustajat.</span></div>
       </section>
       <aside class="sidebar">
         <section class="card detail" id="detail"></section>
@@ -239,10 +239,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=2.0.29"></script>
-  <script src="./calendar-backup.js?v=2.0.29"></script>
-  <script src="./calendar-access.js?v=2.0.29"></script>
-  <script src="./finland-calendar.js?v=2.0.29"></script>
+  <script src="./calendar-pdf.js?v=2.0.30"></script>
+  <script src="./calendar-backup.js?v=2.0.30"></script>
+  <script src="./calendar-access.js?v=2.0.30"></script>
+  <script src="./finland-calendar.js?v=2.0.30"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
@@ -417,7 +417,7 @@
     (() => {
       const STORAGE_KEY = 'koulukyytikalenteri-v1';
       function normalizeNote(note) {
-        if(note==='Poissa')return 'Poissa koulusta/ei kuljettu';
+        if(note==='Poissa'||note==='Poissa koulusta/ei kuljettu')return 'Poissa / ei kuljettu';
         if(note==='Sampan kyydissä')return 'Samppa ajoi aamulla';
         note=note.replace(/ \+ajoi$/,' ajoi');
         if(note.endsWith(' ajoi (ilta)'))return `${note.slice(0,-12)} ajoi illalla`;
@@ -594,7 +594,7 @@
         const dayLabel = new Intl.DateTimeFormat('fi-FI',{weekday:'long',day:'numeric',month:'numeric',year:'numeric'}).format(date);
         const dayNotes = data.trips[selected]?.notes||[];
         const observances=observancesForDay(selected);
-        const noteOptions = ['Toisen kyydissä','Oma kyyti','Poissa koulusta/ei kuljettu','Loma'];
+        const noteOptions = ['Toisen kyydissä','Oma kyyti','Poissa / ei kuljettu','Loma'];
         const morningControls=`<div class="note-controls"><select class="day-note-select" id="dayNoteSelect" required aria-label="Aamun merkintä"><option value="" selected disabled hidden>Tee lisämerkintä aamuun</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled hidden>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
         const eveningControls=`<div class="note-controls"><select class="day-note-select" id="eveningNoteSelect" required aria-label="Illan merkintä"><option value="" selected disabled hidden>Tee lisämerkintä iltapäivään</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled hidden>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
         $('detail').innerHTML = `<div class="detail-head"><div><h2>${safe(dayLabel)}</h2>${observances.length?`<ul class="detail-observances">${observances.map(item=>`<li>${safe(item.name)}</li>`).join('')}</ul>`:''}${selected!==iso(new Date())?`<button class="today-link" id="goToday">Siirry kuluvaan päivään</button>` : ''}</div><div class="day-actions"><button class="day-action add-all" id="addAll" type="button" aria-label="Lisää kaikki henkilöt tälle päivälle">+ KAIKKI</button><button class="day-action remove-all" id="removeAll" type="button" aria-label="Poista kaikki henkilöt tältä päivältä">- KAIKKI</button></div></div>${dayNotes.length?`<div class="day-notes">${dayNotes.map(note=>`<span class="day-note-chip ${driverDirection(note)?`driver-${driverDirection(note)}`:''}">${safe(note)}<button class="note-remove" data-remove-note="${safe(note)}" type="button" aria-label="Poista merkintä ${safe(note)}">×</button></span>`).join('')}</div>`:''}${directionMarkup(selected,'to','Aamulla kyydissä olleet ja muut merkinnät','Keitä matkusti samalla autolla aamulla','school',morningControls)}${directionMarkup(selected,'home','Iltapäivällä kyydissä olleet ja muut merkinnät','Keitä matkusti samalla autolla iltapäivällä','home',eveningControls)}`;
@@ -628,8 +628,8 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.29'});
-            pdf.save(`Koulukyydit_${selectedMonth}.pdf`);
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.30'});
+            pdf.save(`Kyytikalenteri_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
         });
@@ -642,7 +642,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.29'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'2.0.30'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -652,7 +652,7 @@
             if(canShare){
               const share=document.createElement('button');share.type='button';share.className='primary';share.textContent=files.length>1?'Jaa kuvat':'Jaa kuva';
               share.addEventListener('click',async()=>{
-                try{await navigator.share({files,title:`Koulukyydit – ${title}`});}
+                try{await navigator.share({files,title:`Kyytikalenteri – ${title}`});}
                 catch(error){if(error.name!=='AbortError')hint.textContent='Jakaminen ei onnistunut. Tallenna kuva ja liitä se WhatsAppiin.';}
               });imagePanel.append(share);
             }
@@ -672,9 +672,9 @@
         const button=$('backupData'),message=$('backupStatus');button.disabled=true;message.textContent='Haetaan varmuuskopion tiedot tietokannasta…';
         try {
           const snapshot=await window.firebaseReadBackup();
-          const version='2.0.29';
+          const version='2.0.30';
           const csv=window.makeCalendarBackupCsv(snapshot,version);
-          const filename=`Koulukyydit_varmuuskopio_${iso(new Date())}.csv`;
+          const filename=`Kyytikalenteri_varmuuskopio_${iso(new Date())}.csv`;
           const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
           link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
           try {

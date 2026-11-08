@@ -93,7 +93,7 @@
         if(type==='trip'){const index=person(value);if(!entry[direction].includes(index))entry[direction].push(index);}
         else {
           if(direction!=='')fail();
-          const note=value==='Poissa'?'Poissa koulusta/ei kuljettu':value.endsWith(' ajoi (ilta)')?value.slice(0,-12)+' ajoi illalla':value.endsWith(' ajoi')?value.slice(0,-5)+' ajoi aamulla':value;
+          const note=value==='Poissa'||value==='Poissa koulusta/ei kuljettu'?'Poissa / ei kuljettu':value.endsWith(' ajoi (ilta)')?value.slice(0,-12)+' ajoi illalla':value.endsWith(' ajoi')?value.slice(0,-5)+' ajoi aamulla':value;
           if(!entry.notes.includes(note))entry.notes.push(note);
         }contentRows++;
       }else if(type==='calendar'){
@@ -152,7 +152,7 @@
     for(const date of Object.keys(payload.trips).sort()){
       const entry=payload.trips[date];
       for(const way of ['to','home'])for(const i of entry[way]||[])if(payload.people[i]!==undefined)rows.push(['trip',date,way,payload.people[i]]);
-      for(const note of entry.notes||[])rows.push(['note',date,'',note]);
+      for(const note of entry.notes||[])rows.push(['note',date,'',note==='Poissa'||note==='Poissa koulusta/ei kuljettu'?'Poissa / ei kuljettu':note]);
     }
     // Extension records retain the original four-column CSV format.
     rows.push(['calendar',calendar.id,'metadata',JSON.stringify({...calendar,exportedAt:exportedAt.toISOString(),appVersion:version})]);
