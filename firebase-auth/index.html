@@ -148,8 +148,7 @@
     .report-table .balance-nonnegative,.payment-table .balance-nonnegative { color:var(--green); font-weight:750 }
     .payment-table .payment-value { white-space:nowrap; font-weight:400 }
     .payment-table .payment-value-positive { font-weight:750 }
-    .report-table tfoot th,.report-table tfoot td { border-bottom:0 }
-    .report-table tfoot td.balance-negative,.report-table tfoot td.balance-nonnegative { font-weight:400 }
+    .report-table tfoot th,.report-table tfoot td { border-bottom:0; color:var(--muted); font-size:12px; font-weight:400 }
     .report-empty { color:var(--muted); font-size:13px; margin:0 }
     footer { color:var(--muted); font-size:12px; text-align:center; margin-top:19px }
     @media(max-width:850px) { .layout { grid-template-columns:1fr } .sidebar { grid-template-columns:1fr 1fr } .day { min-height:90px } }
@@ -621,7 +620,7 @@
         });
         const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid!==0||p.outgoing>0);
         const ownBalance = activeCounts.reduce((cents,p)=>cents-Math.round(p.total*100),0)/100;
-        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2></div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Suoritus</th><th>Siirto</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${p.paymentLabel}</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody><tfoot><tr><th scope="row" colspan="6" style="text-align:right">Oma saldo (jos ylläolevat on suoritettu):</th><td class="${ownBalance<0?'balance-negative':'balance-nonnegative'}">${euro(ownBalance)}€</td></tr></tfoot></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. * tarkoittaa, että maksoit henkilölle.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2></div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Suoritus</th><th>Siirto</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${p.paymentLabel}</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody><tfoot><tr><th scope="row" colspan="6" style="text-align:right">Oma saldo (jos ylläolevat on suoritettu):</th><td>${euro(ownBalance)}€</td></tr></tfoot></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. * tarkoittaa, että maksoit henkilölle.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
         window.clearMonthImages?.();
         const pdfActions=document.createElement('div');
         pdfActions.className='share-actions';
