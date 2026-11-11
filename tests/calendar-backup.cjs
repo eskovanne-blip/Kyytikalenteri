@@ -97,10 +97,11 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
    closest:()=>({checked,dataset:{way:'to',person:'0'}})
  }});
  togglePassenger(false);
- assert.doesNotMatch(get('monthReport').innerHTML,/[−-]5,00/);
+ assert.doesNotMatch(get('monthReport').innerHTML.split('<tfoot>')[0],/[−-]5,00/);
+ assert.match(get('monthReport').innerHTML, /<tfoot>.*Oma saldo:<\/th><td[^>]*>[−-]5,00€<\/td>/);
  assert.doesNotMatch(get('paymentBalances').innerHTML,/[−-]5,00/);
  togglePassenger(true);
- assert.match(get('monthReport').innerHTML,/[−-]5,00/);
+ assert.match(get('monthReport').innerHTML.split('<tfoot>')[0],/[−-]5,00/);
  assert.match(get('paymentBalances').innerHTML,/[−-]5,00/);
  let writesToLedger=0;
  browser.window.firebaseRecordPayment=async change=>{
@@ -127,7 +128,7 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.equal(writesToLedger,2);
  assert.equal(ledger.payments.find(p=>p.person==='Anna').amount,3.5);
  assert.equal(ledger.payments.find(p=>p.person==='Väinö').amount,-5);
- assert(get('monthReport').innerHTML.includes('5,00 €*'));
+ assert(get('monthReport').innerHTML.split('<tfoot>')[0].includes('5,00 €*'));
  assert.match(get('paymentBalances').innerHTML,/>Suoritus<.*>Uusi saldo</);
  assert.match(get('paymentBalances').innerHTML,/class="balance-nonnegative">3,50 €/);
  assert.match(get('paymentBalances').innerHTML,/payment-value balance-nonnegative">0,00 €/);
@@ -157,7 +158,7 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
    trips:{[earlierMonth+'-01']:{to:[0],home:[],notes:['Väinö ajoi aamulla']}},
    payments:[{person:'Anna',month:earlierMonth,amount:2},{person:'Väinö',month:earlierMonth,amount:-2}]
  });
- const summary=get('monthReport').innerHTML;
+ const summary=get('monthReport').innerHTML.split('<tfoot>')[0];
  assert.match(summary,/<td>[−-]3,00€<\/td><td class="balance-negative">[−-]3,00€/);
  assert.match(summary,/<td>3,00€<\/td><td class="balance-nonnegative">3,00€/);
  assert.match(get('paymentBalances').innerHTML,/balance-negative">[−-]3,00 €/);
@@ -175,7 +176,7 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  assert.match(get('detail').innerHTML,/Anna ajoi aamulla/);
  assert.doesNotMatch(get('detail').innerHTML,/Väinö ajoi aamulla/);
  assert.match(get('detail').innerHTML,/Väinö ajoi illalla/);
- assert.equal((get('monthReport').innerHTML.match(/>5,00€</g)||[]).length,2);
+ assert.equal((get('monthReport').innerHTML.split('<tfoot>')[0].match(/>5,00€</g)||[]).length,2);
  const upcoming=new Date(now.getFullYear(),now.getMonth()+1,1);
  const nextKey=upcoming.getFullYear()+'-'+String(upcoming.getMonth()+1).padStart(2,'0')+'-01';
  browser.window.applyFirebaseCalendar({...ledger,payments:[],tripPrice:1,
@@ -191,12 +192,12 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  setTripPrice('2.00');
  assert.match(get('tripPriceInfo').textContent,/Nykyinen hinta: 1,00 €/);
  assert.match(get('scheduledTripPrices').innerHTML,/Ajastettu: 2,00 €/);
- assert.match(get('monthReport').innerHTML,/>1,00€<\/td>/);
+ assert.match(get('monthReport').innerHTML.split('<tfoot>')[0],/>1,00€<\/td>/);
  get('next').handlers.click();
- assert.match(get('monthReport').innerHTML,/>2,00€<\/td>/);
+ assert.match(get('monthReport').innerHTML.split('<tfoot>')[0],/>2,00€<\/td>/);
  setTripPrice('1.00');
  assert.match(get('scheduledTripPrices').innerHTML,/Ajastettu: 1,00 €/);
- assert.doesNotMatch(get('monthReport').innerHTML,/>2,00€<\/td>/);
+ assert.doesNotMatch(get('monthReport').innerHTML.split('<tfoot>')[0],/>2,00€<\/td>/);
  setTripPrice('2.00');
  const removeScheduledPrice=()=>get('scheduledTripPrices').handlers.click({
    target:{closest:()=>({dataset:{removeTripPrice:nextKey}})}
@@ -208,6 +209,6 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  removeScheduledPrice();
  assert.equal(get('scheduledTripPrices').innerHTML,'');
  assert.match(get('tripPriceInfo').textContent,/Nykyinen hinta: 1,00 €/);
- assert.doesNotMatch(get('monthReport').innerHTML,/>2,00€<\/td>/);
+ assert.doesNotMatch(get('monthReport').innerHTML.split('<tfoot>')[0],/>2,00€<\/td>/);
  console.log('PASS: backup/restore round trips, malformed CSV rejection, legacy format, admin and session checks, concurrent edits, offline failures, UI confirmation cancel and restore, no user-account writes.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
