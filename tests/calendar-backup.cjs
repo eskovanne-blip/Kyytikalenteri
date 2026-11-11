@@ -98,7 +98,7 @@ function options(){return {user:{uid:'u1',emailVerified:true},calendarId:'cal1',
  }});
  togglePassenger(false);
  assert.doesNotMatch(get('monthReport').innerHTML.split('<tfoot>')[0],/[−-]5,00/);
- assert.match(get('monthReport').innerHTML, /<tfoot>.*Oma saldo:<\/th><td[^>]*>[−-]5,00€<\/td>/);
+ assert.match(get('monthReport').innerHTML, /<tfoot>.*Oma saldo \(jos ylläolevat on suoritettu\):<\/th><td[^>]*>[−-]5,00€<\/td>/);
  assert.doesNotMatch(get('paymentBalances').innerHTML,/[−-]5,00/);
  togglePassenger(true);
  assert.match(get('monthReport').innerHTML.split('<tfoot>')[0],/[−-]5,00/);
