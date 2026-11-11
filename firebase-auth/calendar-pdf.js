@@ -77,10 +77,10 @@
       const direction=way=>{
         const names=(Array.isArray(entry[way])?entry[way]:[]).map(i=>people[i]).filter(v=>v!==undefined);
         const relevant=notes.filter(note=>{
-          if(way==='to')return !note.endsWith(' ajoi illalla')&&note!=='Oma kyyti iltapäivällä';
-          return !note.endsWith(' ajoi aamulla')&&note!=='Oma kyyti aamulla'&&note!=='Loma'&&note!=='Poissa / ei kuljettu'&&note!=='Poissa';
+          if(way==='to')return !note.endsWith(' ajoi illalla')&&note!=='Oma kyyti iltapäivällä'&&note!=='Bussi iltapäivällä';
+          return !note.endsWith(' ajoi aamulla')&&note!=='Oma kyyti aamulla'&&note!=='Bussi aamulla'&&note!=='Loma'&&note!=='Poissa / ei kuljettu'&&note!=='Poissa';
         });
-        const runs=[...names.map(name=>({text:name,bold:false})),...relevant.map(note=>({text:note==='Oma kyyti aamulla'||note==='Oma kyyti iltapäivällä'?'Oma kyyti':note,bold:true}))];
+        const runs=[...names.map(name=>({text:name,bold:false})),...relevant.map(note=>({text:note==='Oma kyyti aamulla'||note==='Oma kyyti iltapäivällä'?'Oma kyyti':note==='Bussi aamulla'||note==='Bussi iltapäivällä'?'Bussi':note,bold:true}))];
         return runs.length?runs.flatMap((run,i)=>i?[{text:'; ',bold:false},run]:[run]):[{text:'-',bold:false}];
       };
       return [[new Intl.DateTimeFormat('fi-FI',{weekday:'short',day:'numeric',month:'numeric'}).format(new Date(date+'T12:00:00')),direction('to'),direction('home')]];
