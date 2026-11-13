@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f5">
+  <title>Kyytikalenteri</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <style>
+    :root { color-scheme: light; --ink:#202b28; --muted:#697570; --line:#e1e7e3; --green:#236b52; --pale:#e8f3ed; --paper:#fff; --bg:#f5f7f5; --orange:#c87535; }
+    * { box-sizing:border-box }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif }
+    button,input { font:inherit }
+    button { cursor:pointer }
+    .shell { width:100%; max-width:none; padding:12px 14px 60px; margin:0 }
+    .page-header { margin-bottom:14px }
+    .header-main { min-width:0 }
+    .header-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end }
+
+    #signOutButton { background:#c54646; border-color:#c54646; color:#fff; font-weight:650 }
+    #signOutButton:hover { background:#a93434; border-color:#a93434 }
+
+    .save-state { color:var(--muted); font-size:11px; line-height:1.3; max-width:40ch; overflow-wrap:anywhere }
+    h1 { font-size:clamp(24px,4vw,32px); line-height:1.15; letter-spacing:-.04em; margin:0 }
+    .version { display:inline-block; font-size:.48em; font-weight:600; letter-spacing:0; vertical-align:middle; white-space:nowrap }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:18px; align-items:start }
+    .card { background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px #17362908 }
+    .calendar-card { overflow:hidden }
+    .cal-head { display:flex; justify-content:space-between; align-items:center; padding:19px 22px; border-bottom:1px solid var(--line); background:#f0f2f1 }
+    .month-label { min-width:190px; text-align:center; font-size:20px; font-weight:700; text-transform:capitalize }
+    .nav { display:flex; gap:8px }
+    .icon-btn,.secondary,.primary { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:9px; padding:8px 12px }
+    .icon-btn { width:38px; height:38px; padding:0; font-size:20px }
+    button:hover { border-color:#9bb4a7 }
+    .weekdays,.days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)) }
+    .weekdays { padding:10px 14px 0; color:var(--muted); font-size:12px; font-weight:650; text-align:center }
+    .weekdays div { padding:8px 0 }
+    .weekdays div:nth-child(n+6) { color:#a3ada7 }
+    .days { padding:4px 14px 16px; gap:5px }
+    .day { position:relative; min-height:105px; border:1px solid #e2e8e4; border-radius:10px; background:#fff; box-shadow:0 1px 2px #1736290a; text-align:left; padding:8px; color:var(--ink); transition:background .12s,border .12s }
+    .day:hover { background:#f6faf7; border-color:#d1e0d7 }
+    .day.weekend { background:#f5f7f5; color:#76817b }
+    .day.weekend:hover { background:#f1f5f2 }
+    .day.outside { color:#b2bbb6; background:#fafbfa }
+    .day.today .date { color:var(--green); font-weight:800 }
+    .day.selected { border-color:var(--green); box-shadow:inset 0 0 0 1px var(--green); background:#f7fbf8 }
+    .date { display:flex; align-items:center; justify-content:space-between; font-weight:600 }
+    .count { font-size:10px; background:var(--pale); color:var(--green); border-radius:99px; padding:2px 6px; font-weight:700 }
+    .trip-preview { margin-top:7px; font-size:11px; line-height:1.35; color:#54615b }
+    .trip-preview span { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px }
+    .trip-preview b { font-size:10px; margin-right:3px }
+    .trip-preview .trip-to,.trip-preview .trip-to b { color:var(--green) }
+    .trip-preview .trip-home,.trip-preview .trip-home b { color:#c54646 }
+    .sidebar { display:grid; gap:16px }
+    .panel { padding:18px }
+    .panel h2 { font-size:16px; margin:-8px -8px 8px; padding:12px; border-radius:9px; background:#f0f2f1 }
+    .hint { color:var(--muted); font-size:12px; margin:0 0 14px }
+    .add-row { display:flex; gap:7px }
+    .add-row input { min-width:0; flex:1; border:1px solid var(--line); border-radius:9px; padding:9px 10px; outline:none }
+    .path-row { display:grid; gap:7px; margin-top:14px }
+    .passenger-list { margin-top:16px; padding-top:14px; border-top:1px solid var(--line) }
+    .passenger-list h3 { margin:0 0 8px }
+    .scheduled-trip-price { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-bottom:6px }
+    .path-row label { font-size:13px; font-weight:650 }
+    .path-row input { width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; outline:none }
+    .payments-button { width:100%; background:#5a78ff; border-color:#5a78ff; color:#fff; font-weight:700 }
+    .payments-button:hover { background:#4c67ed; border-color:#4c67ed }
+    .payment-panel { display:grid; gap:7px; margin-top:8px }
+    .payment-panel[hidden] { display:none }
+    .payment-panel select,.payment-panel input { width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:#fff; color:var(--ink) }
+    .payment-table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums }
+    .payment-table th,.payment-table td { padding:5px 4px; text-align:right }
+    .payment-table th:first-child,.payment-table td:first-child { text-align:left }
+    .payment-table td button { max-width:100%; overflow-wrap:anywhere }
+    .payment-editor-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px }
+    input:focus { border-color:var(--green) }
+    .primary,.note-controls .day-note-select { background:var(--green); color:#fff; border-color:var(--green); font-weight:650; padding:9px 13px }
+    .primary:hover,.note-controls .day-note-select:hover { background:#1c5943; border-color:#1c5943 }
+    .people { display:flex; flex-wrap:wrap; gap:6px; margin-top:13px }
+    .person { display:inline-flex; align-items:center; gap:5px; border:0; border-radius:6px; padding:3px 7px; background:var(--green); color:#fff; font-size:11px; font-weight:700 }
+    .person-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    .remove { border:0; background:transparent; color:#fff; font-size:15px; padding:0 1px; line-height:1; opacity:.8 }
+    .remove:hover { color:#fff; opacity:1 }
+    .empty { text-align:center; color:var(--muted); font-size:13px; padding:13px 5px }
+    .detail { padding:20px }
+    .detail h2 { margin:0; font-size:20px; text-transform:capitalize }
+    .detail-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:12px; margin:-8px -8px 0; border-bottom:1px solid var(--line); border-radius:9px; background:#f0f2f1 }
+    .day-actions { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end }
+    .day-action { border:1px solid transparent; border-radius:8px; padding:7px 10px; color:#fff; font-size:12px; font-weight:750; white-space:nowrap }
+    .day-action.add-all { background:#238653; border-color:#238653 }
+    .day-action.add-all:hover { background:#1c7044; border-color:#1c7044 }
+    .day-action.remove-all { background:#c54646; border-color:#c54646 }
+    .day-action.remove-all:hover { background:#a93434; border-color:#a93434 }
+    .note-controls { display:flex; align-items:center; gap:7px; margin:12px 0 0; flex-wrap:wrap }
+    .note-controls select { min-width:0; flex:1; border:1px solid var(--line); border-radius:8px; padding:8px 9px; color:var(--ink); background:#fff }
+    .direction .note-controls { margin:0 0 7px; }
+    .note-controls .day-note-select option { background:#fff; color:var(--ink) }
+    .day-notes { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px }
+    .day-note-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:6px; background:#fbe9e7; color:#873b34; font-size:11px; font-weight:700 }
+    .note-remove { padding:0; border:0; background:transparent; color:inherit; font-size:15px; line-height:1 }
+    .day-note { display:block; width:max-content; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:4px; padding:2px 6px; border-radius:5px; background:#fbe9e7; color:#a13b32; font-size:10px; font-weight:750 }
+    .day-note.driver-morning,.day-note-chip.driver-morning { background:var(--green); color:#fff }
+    .day-note.driver-evening,.day-note-chip.driver-evening { background:#c54646; color:#fff }
+    .today-link { color:var(--green); border:0; background:none; padding:4px 0; font-weight:650; font-size:13px }
+    .share-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+    .whatsapp-link { display:inline-flex; align-items:center; justify-content:center; border:1px solid #25d366; border-radius:9px; padding:8px 11px; background:#25d366; color:#123b25; text-decoration:none; font-size:13px; font-weight:700; white-space:nowrap }
+    .whatsapp-link:hover { background:#1fbd5b; border-color:#1fbd5b }
+    .direction { padding-top:16px }
+    .direction + .direction { margin-top:15px; border-top:1px solid var(--line) }
+    .direction h3 { display:flex; align-items:center; gap:8px; margin:0 0 4px; font-size:14px }
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green) }
+    .direction.home .dot { background:var(--orange) }
+    .direction p { margin:0 0 10px; font-size:12px; color:var(--muted) }
+    .checklist { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px }
+    .check { border:1px solid var(--line); border-radius:9px; padding:8px; display:flex; gap:7px; align-items:center; font-size:13px; cursor:pointer; min-width:0 }
+    .check:has(input:checked) { border-color:var(--green); background:var(--green); color:#fff }
+    .check input { accent-color:var(--green); margin:0 }
+    .check:has(input:checked) input { accent-color:#fff }
+    .check span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    .no-people { color:var(--muted); font-size:13px; background:#f7f8f7; border-radius:9px; padding:10px }
+    .legend { display:flex; flex-wrap:wrap; gap:4px 14px; color:var(--muted); font-size:12px; padding:0 22px 15px }
+    .legend b { color:var(--green) }
+    .calendar-observance { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:3px; font-size:10px; font-weight:700; color:#1e4c89 }
+    .calendar-observance.holiday,.legend .holiday { color:#a53135 }
+    .calendar-observance.eve,.legend .eve { color:#75552a }
+    .flag-symbol { display:inline-block; width:11px; height:8px; margin-right:3px; border:1px solid #6380a8; border-radius:1px; background:linear-gradient(transparent 38%,#1e4c89 38% 63%,transparent 63%),linear-gradient(90deg,#fff 28%,#1e4c89 28% 49%,#fff 49%); vertical-align:baseline }
+    .detail-observances { margin:4px 0 6px; padding-left:18px; font-size:13px; color:var(--muted) }
+    .legend .legend-to { color:var(--green) }
+    .legend .legend-home { color:#c54646 }
+    .month-report { padding:20px }
+    .report-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:-8px -8px 14px; padding:12px; border-radius:9px; background:#f0f2f1 }
+    .report-head h2 { margin:0; font-size:18px }
+    .report-table { width:100%; border-collapse:collapse; font-size:14px }
+    .report-table th,.report-table td { padding:10px 8px; border-bottom:1px solid var(--line); text-align:right }
+    .report-table th:first-child,.report-table td:first-child { text-align:left }
+    .report-table th { color:var(--muted); font-size:12px; font-weight:650 }
+    .report-table .balance-negative,.payment-table .balance-negative { color:#c54646; font-weight:750 }
+    .report-table .balance-nonnegative,.payment-table .balance-nonnegative { color:var(--green); font-weight:750 }
+    .payment-table .payment-value { white-space:nowrap; font-weight:400 }
+    .payment-table .payment-value-positive { font-weight:750 }
+    .report-table tfoot th,.report-table tfoot td { border-bottom:0; color:var(--muted); font-size:12px; font-weight:400 }
+    .report-empty { color:var(--muted); font-size:13px; margin:0 }
+    @media(max-width:850px) { .layout { grid-template-columns:1fr } .sidebar { grid-template-columns:1fr 1fr } .day { min-height:90px } }
+    @media(max-width:560px) { .shell { padding:8px 12px 40px } .page-header { margin-bottom:10px } .sidebar { grid-template-columns:1fr } .cal-head { padding:14px } .days { padding:4px 7px 10px; gap:2px } .weekdays { padding:8px 7px 0 } .day { min-height:69px; border-radius:7px; padding:5px 3px; font-size:13px } .trip-preview { margin-top:4px; font-size:9px } .trip-preview span { margin-top:2px } .count { font-size:9px; padding:1px 4px } .month-label { min-width:150px; font-size:18px } .legend { padding:0 14px 13px } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="page-header">
+      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.0)</span></h1><p class="hint" id="saveState" role="status"></p></div>
+    </header>
+
+    <div id="calendarApp">
+    <div class="layout">
+      <section class="card calendar-card" aria-label="Kalenteri">
+        <div class="cal-head">
+          <div class="nav"><button class="icon-btn" id="prev" aria-label="Edellinen kuukausi">‹</button></div>
+          <div class="month-label" id="monthLabel"></div>
+          <div class="nav"><button class="icon-btn" id="next" aria-label="Seuraava kuukausi">›</button></div>
+        </div>
+        <div class="weekdays"><div>Ma</div><div>Ti</div><div>Ke</div><div>To</div><div>Pe</div><div>La</div><div>Su</div></div>
+        <div class="days" id="days"></div>
+        <div class="legend"><span><b class="legend-to">A</b> aamulla</span><span><b class="legend-home">I</b> iltapäivällä</span><span><b class="holiday">Pyhäpäivä</b></span><span><b class="eve">Aattopäivä</b></span><span><i class="flag-symbol" aria-hidden="true"></i>Liputuspäivä</span><span>Valitse päivä ja rastita matkustajat.</span></div>
+      </section>
+      <aside class="sidebar">
+        <section class="card detail" id="detail"></section>
+        <section class="card month-report" id="monthReport"></section>
+        <section class="card panel">
+          <h2>Parametrit</h2>
+          <form class="path-row" id="tripPriceForm">
+            <p class="hint" id="tripPriceInfo" style="margin:0" aria-live="polite"></p>
+            <div id="scheduledTripPrices"></div>
+            <label for="tripPrice">Uusi hinta yhdelle ajosuunnalle (€)</label>
+            <input id="tripPrice" type="number" min="0" step="0.01" inputmode="decimal" required>
+            <label for="tripPriceDate">Voimassa alkaen</label>
+            <input id="tripPriceDate" type="date" required>
+            <button class="primary" type="submit">Tallenna hinta</button>
+            <p class="hint" id="tripPriceStatus" role="status" style="margin:0"></p>
+          </form>
+          <div class="path-row">
+            <button class="secondary payments-button" id="paymentsButton" type="button" aria-expanded="false" aria-controls="paymentPanel">Maksujen hallinta</button>
+            <div class="payment-panel" id="paymentPanel" hidden>
+              <label for="paymentMonth">Valitse kuukausi</label>
+              <select id="paymentMonth"></select>
+              <div id="paymentBalances"></div>
+              <form id="paymentEditor" hidden>
+                <p id="paymentQuestion"></p>
+                <label for="paymentAmount">Summa (€)</label>
+                <input id="paymentAmount" type="number" min="0.01" step="0.01" inputmode="decimal" required>
+                <div class="payment-editor-actions">
+                  <button class="primary" id="confirmPayment" type="submit">Merkitse maksetuksi</button>
+                  <button class="secondary" id="cancelPayment" type="button">Peruuta</button>
+                  <button class="secondary" id="removePayment" type="button" hidden>Poista merkintä</button>
+                </div>
+              </form>
+              <p class="hint" id="paymentStatus" role="status"></p>
+            </div>
+          </div>
+          <section class="passenger-list" aria-labelledby="passengerListTitle">
+            <h3 id="passengerListTitle">Matkustajalista</h3>
+            <form class="add-row" id="personForm"><input id="personInput" maxlength="40" placeholder="Henkilön nimi" aria-label="Henkilön nimi" required><button class="primary" type="submit">Lisää</button></form>
+            <div class="people" id="people"></div>
+            <p class="hint">Henkilön poistaminen piilottaa nimen uusista kirjauksista ja säilyttää aiemmat merkinnät.</p>
+          </section>
+          <div class="path-row">
+            <h3>Kalenteritiedosto</h3>
+            <button class="primary" id="openCsv" type="button">Avaa CSV</button>
+            <button class="primary" id="saveCsv" type="button">Tallenna CSV</button>
+            <button class="secondary" id="downloadCsv" type="button">Lataa CSV-kopio</button>
+            <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
+            <p class="hint" id="csvStatus" role="status"></p>
+          </div>
+        </section>
+
+      </aside>
+    </div>
+    </div>
+  </main>
+  <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
+  <script src="./calendar-pdf.js?v=L1.0.0"></script>
+  <script src="./calendar-backup.js?v=L1.0.0"></script>
+
+  <script src="./finland-calendar.js?v=L1.0.0"></script>
+
+  <script>
+    (() => {
+
+      function normalizeNote(note) {
+        if(note==='Poissa'||note==='Poissa koulusta/ei kuljettu')return 'Poissa / ei kuljettu';
+        if(note==='Sampan kyydissä')return 'Samppa ajoi aamulla';
+        note=note.replace(/ \+ajoi$/,' ajoi');
+        if(note.endsWith(' ajoi (ilta)'))return `${note.slice(0,-12)} ajoi illalla`;
+        if(note.endsWith(' ajoi'))return `${note.slice(0,-5)} ajoi aamulla`;
+        return note;
+      }
+      const driverDirection = note => note.endsWith(' ajoi aamulla')?'morning':note.endsWith(' ajoi illalla')?'evening':null;
+      function normalizeDayNotes(notes) {
+        if(!Array.isArray(notes))return [];
+        const normalized=notes.filter(note=>typeof note==='string').map(normalizeNote);
+        const latestDriverIndex=new Map();
+        normalized.forEach((note,index)=>{
+          const direction=driverDirection(note);
+          if(direction)latestDriverIndex.set(direction,index);
+        });
+        return normalized.filter((note,index)=>{
+          const direction=driverDirection(note);
+          return !direction||latestDriverIndex.get(direction)===index;
+        });
+      }
+      function normalizePayments(payments) {
+        const latest=new Map();
+        for(const payment of payments) {
+          if(!payment||typeof payment.person!=='string'||!/^\d{4}-\d{2}$/.test(payment.month)||!Number.isFinite(Number(payment.amount)))continue;
+          const key=`${payment.person}\u0000${payment.month}`;
+          latest.delete(key);
+          const amount=Number(payment.amount), outgoing=Number(payment.outgoing);
+          latest.set(key,{person:payment.person,month:payment.month,amount,
+            ...(outgoing>Math.max(0,-amount)&&Number.isFinite(outgoing)?{outgoing}:{})});
+        }
+        return [...latest.values()];
+      }
+      function normalizeTripPrices(prices, fallbackPrice) {
+        const latest=new Map();
+        for(const item of prices)if(item&&/^\d{4}-\d{2}-\d{2}$/.test(item.date)&&Number.isFinite(Number(item.price))&&Number(item.price)>=0){latest.delete(item.date);latest.set(item.date,{date:item.date,price:Number(item.price)});}
+        const normalized=[...latest.values()].sort((a,b)=>a.date.localeCompare(b.date));
+        if(!normalized.some(item=>item.date==='0001-01-01'))normalized.unshift({date:'0001-01-01',price:Number.isFinite(Number(fallbackPrice))&&Number(fallbackPrice)>=0?Number(fallbackPrice):1});
+        return normalized;
+      }
+      function priceFromHistory(prices, date, fallbackPrice=1) {
+        let price=fallbackPrice;
+        for(const item of prices){if(item.date>date)break;price=item.price;}
+        return price;
+      }
+      const today = new Date(); today.setHours(0,0,0,0);
+      const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      let data;
+      data = {};
+      if (!Array.isArray(data.people)) data.people=[];
+      if (!Array.isArray(data.inactivePeople)) data.inactivePeople=[];
+      if (!Array.isArray(data.payments)) data.payments=[];
+      data.payments=normalizePayments(data.payments);
+      if (!data.trips || typeof data.trips !== 'object') data.trips={};
+      if (!Number.isFinite(Number(data.tripPrice)) || Number(data.tripPrice)<0) data.tripPrice=1;
+      if (!Array.isArray(data.tripPrices)) data.tripPrices=[];
+      data.tripPrices=normalizeTripPrices(data.tripPrices,data.tripPrice);
+      data.tripPrice=priceFromHistory(data.tripPrices,iso(today),data.tripPrice);
+      if (!Array.isArray(data.people)) data.people = [];
+      if (!data.trips || typeof data.trips !== 'object') data.trips = {};
+      for (const entry of Object.values(data.trips)) if (Array.isArray(entry.notes)) entry.notes=normalizeDayNotes(entry.notes);
+      let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
+      let selected = iso(today);
+      const $ = id => document.getElementById(id);
+      const status = message => { $('saveState').textContent = message; };
+
+      const csvOptions = {types:[{description:'CSV-tiedosto',accept:{'text/csv':['.csv']}}]};
+      let csvFile = null;
+      let savedText = null;
+      let pendingWrite = Promise.resolve();
+      let revision = 0;
+      let savedRevision = 0;
+      let choosingFile = false;
+      const csvStatus = message => { $('csvStatus').textContent = message; };
+      const csvText = () => window.makeCalendarCsv(data, 'L1.0.0');
+      const readText = async file => new TextDecoder().decode(await file.arrayBuffer());
+      const supportsFileWriting = typeof window.showOpenFilePicker === 'function' &&
+        typeof window.showSaveFilePicker === 'function';
+
+      window.addEventListener('beforeunload', event => {
+        if (savedRevision === revision) return;
+        event.preventDefault();
+        event.returnValue = '';
+      });
+
+      function writeCsv() {
+        const file = csvFile;
+        const text = csvText();
+        const writingRevision = revision;
+        const write = pendingWrite.then(async () => {
+          if (csvFile !== file) throw new Error('CSV-tallennus keskeytyi.');
+          const stream = await file.createWritable({mode:'exclusive'});
+          try {
+            if (savedText !== null && await readText(await file.getFile()) !== savedText) {
+              throw new Error('CSV-tiedostoa on muokattu muualla. Tallenna muutokset uuteen tiedostoon.');
+            }
+            await stream.write(text);
+            await stream.close();
+          } catch (error) {
+            await stream.abort().catch(() => {});
+            throw error;
+          }
+          savedText = text.replace(/^\uFEFF/, '');
+          savedRevision = writingRevision;
+          csvStatus(`Tallennettu tiedostoon ${file.name}.`);
+        });
+        pendingWrite = write.catch(error => {
+          if (csvFile === file) {
+            csvFile = null;
+            csvStatus(`Tallennus epäonnistui. ${error.message} Valitse Tallenna CSV tai lataa kopio.`);
+          }
+        });
+        return write;
+      }
+
+      function save() {
+        revision++;
+        if (csvFile) return writeCsv();
+        csvStatus('Tallentamattomia muutoksia. Valitse Tallenna CSV.');
+      }
+
+      async function chooseFile(action) {
+        if (choosingFile) return;
+        choosingFile = true;
+        try { await action(); }
+        catch (error) { if (error.name !== 'AbortError') csvStatus(error.message); }
+        finally { choosingFile = false; }
+      }
+
+      function downloadCsv() {
+        const url = URL.createObjectURL(new Blob([csvText()], {type:'text/csv;charset=utf-8'}));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Kyytikalenteri-local.csv';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        csvStatus('CSV-kopio lähetettiin selaimen ladattavaksi.');
+      }
+
+      async function openCsv(file, handle = null) {
+        const text = await readText(file);
+        const {payload} = window.parseCalendarBackupCsv(text);
+        if (revision !== savedRevision && !confirm('Avataanko CSV ja korvataanko tallentamattomat muutokset?')) return;
+        // Wait for any write already started before switching the active file.
+        const openingRevision = revision;
+        await pendingWrite;
+        if (handle && await readText(await handle.getFile()) !== text) {
+          throw new Error('Tiedosto muuttui avaamisen aikana. Avaa se uudelleen.');
+        }
+        if (revision !== openingRevision) throw new Error('Kalenteria muokattiin avaamisen aikana. Avaa tiedosto uudelleen.');
+        data = payload;
+        for (const entry of Object.values(data.trips)) entry.notes = normalizeDayNotes(entry.notes);
+        data.tripPrice = priceFromHistory(data.tripPrices, iso(today));
+        csvFile = handle;
+        savedText = text;
+        savedRevision = revision;
+        closePaymentEditor();
+        render();
+        csvStatus(`Avattu ${file.name}.`);
+      }
+
+      $('openCsv').addEventListener('click', () => {
+        if (!supportsFileWriting) { $('csvInput').click(); return; }
+        chooseFile(async () => {
+          const [handle] = await window.showOpenFilePicker(csvOptions);
+          await openCsv(await handle.getFile(), handle);
+        });
+      });
+      $('csvInput').addEventListener('change', async event => {
+        const [file] = event.target.files;
+        if (file) await chooseFile(() => openCsv(file));
+        event.target.value = '';
+      });
+      $('saveCsv').addEventListener('click', () => {
+        if (!supportsFileWriting) {
+          downloadCsv();
+          return;
+        }
+        chooseFile(async () => {
+          if (!csvFile) {
+            csvFile = await window.showSaveFilePicker({...csvOptions,suggestedName:'Kyytikalenteri-local.csv'});
+            savedText = null;
+          }
+          await writeCsv();
+        });
+      });
+      $('downloadCsv').addEventListener('click', downloadCsv);
+      csvStatus(supportsFileWriting
+        ? 'Avaa CSV-tiedosto tai luo uusi valitsemalla Tallenna CSV. Muutokset tallentuvat valittuun tiedostoon.'
+        : 'Avaa olemassa oleva CSV tai tallenna muutokset lataamalla CSV-tiedosto.');
+
+      const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
+      const activePeople = () => data.people.map((name,index)=>({name,index})).filter(person=>!data.inactivePeople.includes(person.name));
+      function monthlyBalance(personIndex, month, state=data) {
+        const normalizedName=state.people[personIndex].trim().toLocaleLowerCase('fi-FI');
+        let balance=0;
+        for(const [date,entry] of Object.entries(state.trips)) {
+          if(!date.startsWith(`${month}-`))continue;
+          const notes=normalizeDayNotes(entry.notes);
+          const driverRides=notes.map(driverName).filter(Boolean).filter(name=>name.trim().toLocaleLowerCase('fi-FI')===normalizedName).length;
+          const to=Array.isArray(entry.to)&&entry.to.includes(personIndex)?1:0;
+          const home=Array.isArray(entry.home)&&entry.home.includes(personIndex)?1:0;
+          balance+=(driverRides-to-home)*priceFromHistory(state.tripPrices,date,Number(state.tripPrice));
+        }
+        return balance;
+      }
+      function monthlyPayment(person, month, state=data) {
+        return state.payments.find(payment=>payment.person===person&&payment.month===month);
+      }
+      function outgoingAmount(payment) {
+        return payment?.outgoing??Math.max(0,-(payment?.amount??0));
+      }
+      function paymentDisplay(payment) {
+        const outgoing=outgoingAmount(payment);
+        const incoming=Math.round(((payment?.amount??0)+outgoing)*100)/100;
+        return [incoming?euro(incoming)+' €':'',outgoing?euro(outgoing)+' €*':''].filter(Boolean).join(' / ')||euro(0)+' €';
+      }
+      function previousMonth(month) {
+        const date=month?new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1,1):new Date();
+        date.setDate(1);date.setMonth(date.getMonth()-1);
+        return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+      }
+      function nextMonth(month) {
+        const date=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1);
+        return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+      }
+      function carryForward(personIndex, month, state=data) {
+        const months=[...Object.keys(state.trips).filter(date=>/^\d{4}-\d{2}-\d{2}$/.test(date)).map(date=>date.slice(0,7)),...state.payments.map(payment=>payment.month)].filter(value=>/^\d{4}-\d{2}$/.test(value)).sort();
+        if(!months.length)return 0;
+        const end=previousMonth(month),start=months[0];
+        if(start>end)return 0;
+        let balance=0,current=start;
+        while(current<=end){
+          const paid=monthlyPayment(state.people[personIndex],current,state)?.amount??0;
+          balance=Math.round((balance+monthlyBalance(personIndex,current,state)+paid)*100)/100;
+          current=nextMonth(current);
+        }
+        return balance;
+      }
+      function paymentBalance(personIndex, month, state=data) {
+        const payment=monthlyPayment(state.people[personIndex],month,state);
+        return Math.round((carryForward(personIndex,month,state)+monthlyBalance(personIndex,month,state)+(payment?.amount??0))*100)/100;
+      }
+      const driverName = note => driverDirection(note)?note.slice(0,-12).trim():null;
+      const trip = (date, way) => {
+        if (!data.trips[date]) data.trips[date] = { to:[], home:[] };
+        if (!Array.isArray(data.trips[date][way])) data.trips[date][way] = [];
+        return data.trips[date][way];
+      };
+      function renderPeople() {
+        const people=activePeople();
+        $('people').innerHTML = people.length ? people.map(({name,index}) => `<div class="person"><span class="person-name">${safe(name)}</span><button class="remove" data-remove="${index}" aria-label="Poista ${safe(name)} uusien kirjausten valinnoista" title="Poista uusien kirjausten valinnoista">×</button></div>`).join('') : '<div class="empty">Lisää ensimmäinen henkilö yllä.</div>';
+      }
+      const observancesForDay = day => window.finnishCalendarObservances?.(day)??[];
+      function observanceLabel({name,kind,flag}) {
+        const type={holiday:'pyhäpäivä',eve:'aattopäivä',flag:'virallinen liputuspäivä',customary:'vakiintunut liputuspäivä'}[kind];
+        return name+' ('+type+(kind==='holiday'&&flag?', virallinen liputuspäivä':'')+')';
+      }
+      function renderCalendar() {
+        $('monthLabel').textContent = new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(cursor);
+        const start = new Date(cursor.getFullYear(),cursor.getMonth(),1);
+        const offset = (start.getDay()+6)%7;
+        const gridStart = new Date(start); gridStart.setDate(start.getDate()-offset);
+        const parts = [];
+        for (let i=0;i<42;i++) {
+          const d = new Date(gridStart); d.setDate(gridStart.getDate()+i);
+          const key = iso(d), entry = data.trips[key] || {to:[],home:[]};
+          const to = Array.isArray(entry.to)?entry.to:[], home = Array.isArray(entry.home)?entry.home:[];
+          const count = to.length+home.length;
+          const notes = Array.isArray(entry.notes)?entry.notes:[];
+          const observances=observancesForDay(key);
+          const details=[...observances.map(observanceLabel),...notes];
+          const observanceMarkup=observances.map(item=>`<span class="calendar-observance ${item.kind}" title="${safe(observanceLabel(item))}">${item.flag?'<i class="flag-symbol" aria-hidden="true"></i>':''}${safe(item.name)}</span>`).join('');
+          parts.push(`<button class="day ${d.getDay()===0||d.getDay()===6?'weekend ':''}${d.getMonth()!==cursor.getMonth()?'outside ':''}${key===iso(today)?'today ':''}${key===selected?'selected':''}" data-day="${key}" aria-label="${safe(new Intl.DateTimeFormat('fi-FI',{dateStyle:'full'}).format(d))}${details.length?`: ${safe(details.join(', '))}`:''}"><span class="date">${d.getDate()}${count?`<span class="count">${count}</span>`:''}</span>${observanceMarkup}${count?`<span class="trip-preview">${to.length?`<span class="trip-to"><b>A</b>${safe(to.slice(0,2).map(i=>data.people[i]).filter(Boolean).join(', '))}${to.length>2?'…':''}</span>`:''}${home.length?`<span class="trip-home"><b>I</b>${safe(home.slice(0,2).map(i=>data.people[i]).filter(Boolean).join(', '))}${home.length>2?'…':''}</span>`:''}</span>`:''}${notes.map(note=>`<span class="day-note ${driverDirection(note)?`driver-${driverDirection(note)}`:''}">${safe(note)}</span>`).join('')}</button>`);
+        }
+        $('days').innerHTML = parts.join('');
+      }
+      function directionMarkup(date, way, title, note, cls, extra='') {
+        const chosen = trip(date,way);
+        const available=activePeople();
+        const archivedSelected=chosen.filter(index=>data.inactivePeople.includes(data.people[index])).map(index=>({name:data.people[index],index,archived:true}));
+        const visible=[...available.map(person=>({...person,archived:false})),...archivedSelected];
+        return `<div class="direction ${cls}"><h3><i class="dot"></i>${title}</h3>${extra}<p>${note}</p>${visible.length?`<div class="checklist">${visible.map(({name,index,archived})=>`<label class="check"><input type="checkbox" data-way="${way}" data-person="${index}" ${chosen.includes(index)?'checked':''} ${archived?'disabled':''}><span>${safe(name)}</span></label>`).join('')}</div>`:'<div class="no-people">Lisää ensin henkilöt Henkilöt-kohdasta.</div>'}</div>`;
+      }
+      function renderDetail() {
+        const date = new Date(`${selected}T12:00:00`);
+        const dayLabel = new Intl.DateTimeFormat('fi-FI',{weekday:'long'}).format(date)+' '+new Intl.DateTimeFormat('fi-FI',{day:'numeric',month:'numeric',year:'numeric'}).format(date);
+        const dayNotes = data.trips[selected]?.notes||[];
+        const observances=observancesForDay(selected);
+        const noteOptions = ['Bussi','Loma','Oma kyyti','Poissa / ei kuljettu','Toisen kyydissä'];
+        const morningControls=`<div class="note-controls"><select class="day-note-select" id="dayNoteSelect" required aria-label="Aamun merkintä"><option value="" selected disabled hidden>Tee lisämerkintä aamuun</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note==="Oma kyyti"?"Oma kyyti (ei muita)":note)}</option>`).join('')}</select><select id="otherRiderSelect" aria-label="Aamun kuski" hidden><option value="" selected disabled hidden>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        const eveningControls=`<div class="note-controls"><select class="day-note-select" id="eveningNoteSelect" required aria-label="Illan merkintä"><option value="" selected disabled hidden>Tee lisämerkintä iltapäivään</option>${noteOptions.map(note=>`<option value="${safe(note)}">${safe(note==="Oma kyyti"?"Oma kyyti (ei muita)":note)}</option>`).join('')}</select><select id="eveningRiderSelect" aria-label="Illan kuski" hidden><option value="" selected disabled hidden>Valitse kuljettaja</option>${activePeople().map(({name})=>`<option value="${safe(name)}">${safe(name)}</option>`).join('')}</select></div>`;
+        $('detail').innerHTML = `<div class="detail-head"><div><h2>${safe(dayLabel)}</h2>${observances.length?`<ul class="detail-observances">${observances.map(item=>`<li>${safe(item.name)}</li>`).join('')}</ul>`:''}${selected!==iso(new Date())?`<button class="today-link" id="goToday">Siirry kuluvaan päivään</button>` : ''}</div><div class="day-actions"><button class="day-action add-all" id="addAll" type="button" aria-label="Lisää kaikki henkilöt tälle päivälle">+ KAIKKI</button><button class="day-action remove-all" id="removeAll" type="button" aria-label="Poista kaikki henkilöt tältä päivältä">- KAIKKI</button></div></div>${dayNotes.length?`<div class="day-notes">${dayNotes.map(note=>`<span class="day-note-chip ${driverDirection(note)?`driver-${driverDirection(note)}`:''}">${safe(note)}<button class="note-remove" data-remove-note="${safe(note)}" type="button" aria-label="Poista merkintä ${safe(note)}">×</button></span>`).join('')}</div>`:''}${directionMarkup(selected,'to','Aamulla kyydissä olleet ja muut merkinnät','Keitä matkusti samalla autolla aamulla','school',morningControls)}${directionMarkup(selected,'home','Iltapäivällä kyydissä olleet ja muut merkinnät','Keitä matkusti samalla autolla iltapäivällä','home',eveningControls)}`;
+      }
+      function renderReport() {
+        const title = new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(cursor).toLocaleUpperCase('fi-FI');
+        const selectedMonth=`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`;
+        const counts = data.people.map((name,i) => {
+          const normalizedName=name.trim().toLocaleLowerCase('fi-FI');
+          let to=0, home=0, driverRides=0;
+          const daysInMonth = new Date(cursor.getFullYear(),cursor.getMonth()+1,0).getDate();
+          for(let day=1;day<=daysInMonth;day++) {
+            const entry=data.trips[iso(new Date(cursor.getFullYear(),cursor.getMonth(),day))];
+            if(!entry)continue;
+            const notes=Array.isArray(entry.notes)?entry.notes:[];
+            const drivers=notes.map(driverName).filter(Boolean);
+            driverRides+=drivers.filter(driver=>driver.toLocaleLowerCase('fi-FI')===normalizedName).length;
+            if(Array.isArray(entry.to)&&entry.to.includes(i))to++;
+            if(Array.isArray(entry.home)&&entry.home.includes(i))home++;
+          }
+          const payment=monthlyPayment(name,selectedMonth), paid=payment?.amount??0, carry=carryForward(i,selectedMonth);
+          return {name,to,home,driverRides,total:Math.round((carry+monthlyBalance(i,selectedMonth)+paid)*100)/100,paid,paymentLabel:paymentDisplay(payment),outgoing:outgoingAmount(payment),carry};
+        });
+        const activeCounts = counts.filter(p=>p.total!==0||p.driverRides>0||p.to>0||p.home>0||p.paid!==0||p.outgoing>0);
+        const ownBalance = activeCounts.reduce((cents,p)=>cents-Math.round(p.total*100),0)/100;
+        $('monthReport').innerHTML=`<div class="report-head"><h2>${safe(title)} · kuukausiyhteenveto</h2></div>${activeCounts.length?`<table class="report-table"><thead><tr><th>Henkilö</th><th>A</th><th>I</th><th>K</th><th>Suoritus</th><th>Siirto</th><th>Saldo</th></tr></thead><tbody>${activeCounts.map(p=>`<tr><td>${safe(p.name)}</td><td>${p.to}</td><td>${p.home}</td><td>${p.driverRides||''}</td><td>${p.paymentLabel}</td><td>${euro(p.carry)}€</td><td class="${p.total<0?'balance-negative':'balance-nonnegative'}">${euro(p.total)}€</td></tr>`).join('')}</tbody><tfoot><tr><th scope="row" colspan="6" style="text-align:right">Oma saldo (jos ylläolevat on suoritettu):</th><td>${euro(ownBalance)}€</td></tr></tfoot></table><p class="hint" style="margin:12px 0 0">Kyydissä matkustaminen vähentää saldoa, kuskina ajaminen kasvattaa sitä. * tarkoittaa, että maksoit henkilölle.</p>`:counts.length?'<p class="report-empty">Ei kyytejä tässä kuussa.</p>':'<p class="report-empty">Lisää henkilöitä nähdäksesi kuukausiyhteenvedon.</p>'}`;
+        window.clearMonthImages?.();
+        const pdfActions=document.createElement('div');
+        pdfActions.className='share-actions';
+        pdfActions.style.marginTop='14px';
+        const pdfButton=document.createElement('button');
+        pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
+        pdfButton.addEventListener('click',()=>{
+          try {
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.0'});
+            pdf.save(`Kyytikalenteri_${selectedMonth}.pdf`);
+            status('Kuukausiraportin PDF ladattu.');
+          } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
+        });
+        const imageButton=document.createElement('button');
+        imageButton.type='button';imageButton.className='primary';imageButton.textContent='Lähetä yhteenveto';
+        const imagePanel=document.createElement('div');
+        let imageUrls=[];
+        window.clearMonthImages=()=>{imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];};
+        imageButton.addEventListener('click',async()=>{
+          imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
+          try {
+            const month=selectedMonth;
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.0'});
+            if(imageButton.isConnected===false)return;
+            imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
+            const hint=document.createElement('p');hint.className='hint';
+            const canShare=typeof navigator.share==='function'&&typeof navigator.canShare==='function'&&navigator.canShare({files});
+            hint.textContent=canShare?'Valitse Jaa kuva ja sen jälkeen WhatsApp.': 'Tallenna kuva ja liitä se WhatsApp-viestiin.';
+            imagePanel.append(hint);
+            if(canShare){
+              const share=document.createElement('button');share.type='button';share.className='primary';share.textContent=files.length>1?'Jaa kuvat':'Jaa kuva';
+              share.addEventListener('click',async()=>{
+                try{await navigator.share({files,title:`Kyytikalenteri – ${title}`});}
+                catch(error){if(error.name!=='AbortError')hint.textContent='Jakaminen ei onnistunut. Tallenna kuva ja liitä se WhatsAppiin.';}
+              });imagePanel.append(share);
+            }
+            files.forEach((file,index)=>{
+              const url=URL.createObjectURL(file);imageUrls.push(url);
+              const link=document.createElement('a');link.href=url;link.download=file.name;link.className='secondary';link.textContent=files.length>1?`Tallenna kuva ${index+1} / ${files.length}`:'Tallenna PNG-kuva';link.style.display='inline-block';link.style.margin='8px';
+              const preview=document.createElement('img');preview.src=url;preview.alt=`Kuukausiraportti ${title}, sivu ${index+1} / ${files.length}`;preview.style.cssText='display:block;width:100%;max-width:700px;height:auto;margin-top:12px;border:1px solid #dce5e0';
+              imagePanel.append(link,preview);
+            });
+          }catch(error){console.error(error);imagePanel.textContent='Kuvan luonti epäonnistui. Yritä uudelleen.';}
+          finally{imageButton.disabled=false;}
+        });
+        pdfActions.append(pdfButton,imageButton);$('monthReport').append(pdfActions,imagePanel);
+      }
+
+      function render() { renderPeople(); renderCalendar(); renderDetail(); renderReport(); renderPaymentBalances(); renderTripPrices(); }
+      $('prev').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()-1);renderCalendar();renderReport()});
+      $('next').addEventListener('click',()=>{cursor.setMonth(cursor.getMonth()+1);renderCalendar();renderReport()});
+      $('days').addEventListener('click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selected=b.dataset.day;const d=new Date(`${selected}T12:00:00`);cursor=new Date(d.getFullYear(),d.getMonth(),1);render();setTimeout(()=>$('detail').querySelector('[data-way="to"]')?.focus(),0)});
+      $('personForm').addEventListener('submit',e=>{e.preventDefault();const input=$('personInput'),name=input.value.trim();if(!name)return;const existingIndex=data.people.findIndex(p=>p.toLocaleLowerCase('fi-FI')===name.toLocaleLowerCase('fi-FI'));if(existingIndex>=0){const existingName=data.people[existingIndex];if(data.inactivePeople.includes(existingName)){data.inactivePeople=data.inactivePeople.filter(p=>p!==existingName);input.setCustomValidity('');input.value='';save();render();return;}input.setCustomValidity('Tämä henkilö on jo lisätty.');input.reportValidity();return;}input.setCustomValidity('');data.people.push(name);save();input.value='';render()});
+      $('personInput').addEventListener('input',e=>e.target.setCustomValidity(''));
+      function renderTripPrices() {
+        const currentDay=iso(new Date());
+        const currentPrice=priceFromHistory(data.tripPrices,currentDay,data.tripPrice);
+        const dateFormat=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'});
+        const scheduled=data.tripPrices.filter(rate=>rate.date>currentDay);
+        $('tripPriceInfo').textContent='Nykyinen hinta: '+euro(currentPrice)+' € / ajosuunta';
+        $('scheduledTripPrices').innerHTML=scheduled.map(rate=>{
+          const label=euro(rate.price)+' € alkaen '+dateFormat.format(new Date(rate.date+'T12:00:00'));
+          return `<div class="scheduled-trip-price"><span>Ajastettu: ${label}</span><button class="secondary" type="button" data-remove-trip-price="${rate.date}" aria-label="Poista ajastettu hinta ${label}">Poista</button></div>`;
+        }).join('');
+      }
+      $('scheduledTripPrices').addEventListener('click',event=>{
+        const button=event.target.closest('[data-remove-trip-price]');
+        if(!button)return;
+        const date=button.dataset.removeTripPrice;
+        const rate=data.tripPrices.find(item=>item.date===date);
+        if(!rate||date<=iso(new Date()))return;
+        if(!window.confirm('Poistetaanko ajastettu hinnanmuutos?'))return;
+        data.tripPrices=data.tripPrices.filter(item=>item!==rate);
+        save();renderTripPrices();renderReport();renderPaymentBalances();
+        $('tripPriceStatus').textContent='Ajastettu hinnanmuutos poistettu.';
+      });
+      $('tripPriceDate').value=nextMonth(iso(new Date()).slice(0,7))+'-01';
+      $('tripPriceForm').addEventListener('submit',event=>{
+        event.preventDefault();
+        const input=$('tripPrice'), effectiveDate=$('tripPriceDate').value;
+        const date=new Date(effectiveDate+'T12:00:00'), cents=Math.round(Number(input.value)*100);
+        const message=$('tripPriceStatus');
+        if(!input.value||!Number.isSafeInteger(cents)||cents<0||
+          !/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)||Number.isNaN(date.getTime())||iso(date)!==effectiveDate){
+          message.textContent='Tarkista hinta ja voimaantulopäivä.';
+          return;
+        }
+        const price=cents/100;
+        if(price===priceFromHistory(data.tripPrices,effectiveDate,data.tripPrice)){
+          message.textContent='Valitusta päivästä alkaen on jo voimassa sama hinta.';
+          return;
+        }
+        data.tripPrices=normalizeTripPrices([...data.tripPrices,{date:effectiveDate,price}],data.tripPrice);
+        data.tripPrice=priceFromHistory(data.tripPrices,iso(new Date()),data.tripPrice);
+        save();renderTripPrices();renderReport();renderPaymentBalances();
+        input.value='';
+        message.textContent='Hinta '+euro(price)+' € alkaen '+new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(date)+'.';
+      });
+      let paymentPending=false, paymentDraft=null;
+      function closePaymentEditor() {
+        paymentDraft=null;
+        $('paymentEditor').hidden=true;
+      }
+      function renderPaymentBalances() {
+        if($('paymentPanel').hidden)return;
+        const month=$('paymentMonth').value;
+        if(!month){$('paymentBalances').innerHTML='';return;}
+        const rows=data.people.flatMap((person,index)=>{
+          const balance=paymentBalance(index,month), payment=monthlyPayment(person,month);
+          if(data.inactivePeople.includes(person)&&balance===0&&!payment)return [];
+          const disabled=paymentPending||(!payment&&balance===0)?'disabled':'';
+          const outstanding=payment&&Math.abs(payment.amount)<Math.abs(balance-payment.amount);
+          const balanceClass=balance===0?'balance-nonnegative':(balance<0||outstanding)?'balance-negative':'';
+          return [`<tr><td><button class="secondary" type="button" data-payment-person="${index}" ${disabled}>${safe(person)}</button></td><td class="balance-nonnegative">${payment?paymentDisplay(payment):'–'}</td><td class="payment-value ${balanceClass}${balance>0?' payment-value-positive':''}">${euro(balance)} €</td></tr>`];
+        });
+        $('paymentBalances').innerHTML=rows.length
+          ? `<table class="payment-table"><thead><tr><th scope="col">Henkilö</th><th scope="col">Suoritus</th><th scope="col">Uusi saldo</th></tr></thead><tbody>${rows.join('')}</tbody></table>`
+          : '<p class="hint">Kuukaudelle ei ole kyytiläisiä.</p>';
+      }
+      $('paymentsButton').addEventListener('click',()=>{
+        if(paymentPending)return;
+        const panel=$('paymentPanel');
+        panel.hidden=!panel.hidden;
+        $('paymentsButton').setAttribute('aria-expanded',String(!panel.hidden));
+        closePaymentEditor();
+        if(panel.hidden)return;
+        const current=iso(new Date()).slice(0,7), previous=previousMonth(current);
+        const format=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'});
+        $('paymentMonth').innerHTML=[previous,current].map(month=>`<option value="${month}">${format.format(new Date(month+'-01T12:00:00'))}</option>`).join('');
+        $('paymentMonth').value=previous;
+        $('paymentStatus').textContent='';
+        renderPaymentBalances();
+      });
+      $('paymentMonth').addEventListener('change',()=>{
+        closePaymentEditor();
+        $('paymentStatus').textContent='';
+        renderPaymentBalances();
+      });
+      $('paymentBalances').addEventListener('click',async event=>{
+        const button=event.target.closest('[data-payment-person]');
+        if(!button||paymentPending)return;
+        const index=Number(button.dataset.paymentPerson), person=data.people[index], month=$('paymentMonth').value;
+        const balance=paymentBalance(index,month), payment=monthlyPayment(person,month);
+        if(!payment&&!balance)return;
+        closePaymentEditor();
+        paymentDraft={person,month,balance,payment};
+        const initialBalance=balance-(payment?.amount??0);
+        const canComplete=balance!==0&&Math.sign(balance)===Math.sign(initialBalance);
+        if(payment&&!canComplete) {
+          const draft=paymentDraft;
+          closePaymentEditor();
+          await removePayment(draft);
+          return;
+        }
+        $('removePayment').hidden=!payment;
+        $('confirmPayment').textContent=payment?'Täydennä osasuoritusta':'Merkitse maksetuksi';
+        $('paymentQuestion').textContent=balance<0
+          ? `Merkitäänkö summa henkilön ${person} maksamaksi?`
+          : `Merkitäänkö summa maksetuksi henkilölle ${person}?`;
+        $('paymentAmount').value=Math.abs(balance).toFixed(2);
+        $('paymentEditor').hidden=false;
+        $('paymentAmount').focus();
+      });
+      $('cancelPayment').addEventListener('click',closePaymentEditor);
+      async function removePayment(draft) {
+        if(!draft?.payment||paymentPending)return;
+        if(window.confirm(`Poistetaanko henkilön ${draft.person} maksumerkintä ja palautetaanko alkuperäinen saldo?`))
+          await recordPayment(draft);
+      }
+      $('removePayment').addEventListener('click',()=>removePayment(paymentDraft));
+      $('paymentEditor').addEventListener('submit',async event=>{
+        event.preventDefault();
+        if(!paymentDraft||paymentPending)return;
+        const cents=Math.round(Number($('paymentAmount').value)*100);
+        if(!Number.isSafeInteger(cents)||cents<=0)return;
+        await recordPayment(paymentDraft,cents/100);
+      });
+      async function recordPayment({person,month,balance,payment}, amount) {
+        const removing=amount===undefined;
+        paymentPending=true;
+        for(const id of ['paymentMonth','paymentAmount','confirmPayment','cancelPayment','removePayment'])$(id).disabled=true;
+        $('paymentStatus').textContent=removing?'Poistetaan maksumerkintää…':'Tallennetaan maksua…';
+        renderPaymentBalances();
+        try {
+          data.payments = (() => {
+            const state = data;
+            const currentIndex=state.people.indexOf(person), current=monthlyPayment(person,month,state);
+            if(currentIndex<0||current?.amount!==payment?.amount||current?.outgoing!==payment?.outgoing||
+              paymentBalance(currentIndex,month,state)!==balance)
+              throw new Error('Saldo tai maksumerkintä muuttui. Valitse henkilö uudelleen.');
+            const remaining=state.payments.filter(item=>item.person!==person||item.month!==month);
+            if(removing)return remaining;
+            const total=Math.round(((current?.amount??0)+(balance<0?amount:-amount))*100)/100;
+            const outgoing=Math.round((outgoingAmount(current)+(balance>0?amount:0))*100)/100;
+            return [...remaining,{person,month,amount:total,...(outgoing>Math.max(0,-total)?{outgoing}:{})}];
+          })();
+          const saving = save();
+          if (saving) await saving;
+          closePaymentEditor();
+          $('paymentStatus').textContent=removing?'Maksumerkintä poistettu.':'Maksu kirjattu kalenteriin.';
+        } catch(error) {
+          $('paymentStatus').textContent=error.message;
+        } finally {
+          paymentPending=false;
+          for(const id of ['paymentMonth','paymentAmount','confirmPayment','cancelPayment','removePayment'])$(id).disabled=false;
+          renderPaymentBalances();
+        }
+      }
+      $('people').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const name=data.people[Number(b.dataset.remove)];if(name&&!data.inactivePeople.includes(name))data.inactivePeople.push(name);save();render()});
+      $('detail').addEventListener('change',e=>{
+        const addNote=note=>{
+          const entry=data.trips[selected]??={to:[],home:[]};
+          const notes=normalizeDayNotes(entry.notes);
+          if(!notes.includes(note))entry.notes=normalizeDayNotes([...notes,note]);
+          save();render();
+        };
+        if(e.target.id==='dayNoteSelect'||e.target.id==='eveningNoteSelect'){
+          const evening=e.target.id==='eveningNoteSelect', note=e.target.value;
+          if(note==='Toisen kyydissä'){const rider=$(evening?'eveningRiderSelect':'otherRiderSelect');rider.hidden=false;rider.focus();try{rider.showPicker();}catch{rider.click();}return;}
+          if(note==='Oma kyyti')addNote(evening?'Oma kyyti iltapäivällä':'Oma kyyti aamulla');
+          else if(note==='Bussi')addNote(evening?'Bussi iltapäivällä':'Bussi aamulla');
+          else if(note)addNote(note);
+          return;
+        }
+        if(e.target.id==='otherRiderSelect'||e.target.id==='eveningRiderSelect'){
+          const name=e.target.value;
+          if(name)addNote(`${name} ajoi ${e.target.id==='eveningRiderSelect'?'illalla':'aamulla'}`);
+          return;
+        }
+        const c=e.target.closest('[data-way]');if(!c)return;const arr=trip(selected,c.dataset.way),i=Number(c.dataset.person);if(c.checked&&!arr.includes(i))arr.push(i);if(!c.checked)data.trips[selected][c.dataset.way]=arr.filter(n=>n!==i);save();render();
+      });
+      $('detail').addEventListener('click',e=>{if(e.target.closest('#goToday')){const now=new Date();selected=iso(now);cursor=new Date(now.getFullYear(),now.getMonth(),1);render();return;}if(e.target.closest('#addAll')){const everyone=activePeople().map(({index})=>index);data.trips[selected]={...data.trips[selected],to:[...everyone],home:[...everyone]};save();render();return;}if(e.target.closest('#removeAll')){data.trips[selected]={...data.trips[selected],to:[],home:[]};save();render();return;}const removeNote=e.target.closest('[data-remove-note]');if(removeNote){data.trips[selected].notes=(data.trips[selected].notes||[]).filter(note=>note!==removeNote.dataset.removeNote);save();render();}});
+      render();
+
+    })();
+  </script>
+</body>
+</html>
