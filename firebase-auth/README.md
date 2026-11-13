@@ -1,6 +1,6 @@
 # Kyytikalenteri – Firebase-versio
 
-Sovelluksen versio on `2.0.35`. GitHub Pagesin etusivu ohjaa tähän Firebase-sovellukseen.
+Sovelluksen versio on `L1.0.0`. GitHub Pagesin etusivu ohjaa tähän Firebase-sovellukseen.
 
 ## Pyhä- ja liputuspäivät
 
