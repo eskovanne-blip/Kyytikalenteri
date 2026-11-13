@@ -1,52 +1,5 @@
 (function(root) {
   'use strict';
-  const timestamp = value => value?.toDate ? value.toDate().toISOString() : value ?? null;
-
-  // Injected Firestore readers allow tests to verify server reads and access checks.
-  root.readCalendarBackup = async function({user,calendarId,stateRef,pendingWrites,readDocument,readMembers,memberRef,calendarRef,isCurrent}) {
-    if(!user?.emailVerified||!calendarId||!stateRef)throw new Error('Kirjaudu kalenteriin ennen varmuuskopiointia.');
-    await pendingWrites;
-    const own=await readDocument(memberRef);
-    if(!own.exists()||!own.data().active)throw new Error('Varmuuskopiointi vaatii aktiivisen kalenterijäsenyyden.');
-    const membersComplete=['owner','admin'].includes(own.data().role);
-    const [state,calendar,members]=await Promise.all([readDocument(stateRef),readDocument(calendarRef),membersComplete?readMembers():Promise.resolve({docs:[{id:user.uid,data:()=>own.data()}]})]);
-    if(!isCurrent())throw new Error('Kirjautuminen tai kalenteri vaihtui. Yritä uudelleen.');
-    if(!state.exists()||!state.data().payload||!calendar.exists())throw new Error('Kalenterin tietoja ei löytynyt tietokannasta. Varmuuskopiota ei luotu.');
-    return {userUid:user.uid,membersComplete,payload:state.data().payload,calendar:{id:calendarId,name:calendar.data().name||'',ownerUid:calendar.data().ownerUid||'',memberScope:membersComplete?'all':'self'},members:members.docs.map(member=>{
-      const value=member.data();
-      return {uid:member.id,email:value.email||'',role:value.role||'',active:value.active===true,joinedAt:timestamp(value.joinedAt)};
-    })};
-  };
-
-  root.calendarBackupIsOverdue = function(lastBackupAt,now=Date.now()) {
-    const time=lastBackupAt?.toMillis?lastBackupAt.toMillis():lastBackupAt?Date.parse(lastBackupAt):NaN;
-    return !Number.isFinite(time)||now-time>30*24*60*60*1000;
-  };
-
-  root.createBackupReminder = function({confirm,makeBackup,storage,now=()=>new Date()}) {
-    let current=null,busy=false;const seen=new Map();
-    return {
-      clear(){current=null;},
-      async update({calendarId,userUid,lastBackupAt}) {
-        current={calendarId,userUid,lastBackupAt};
-        const date=now(),rawStamp=timestamp(lastBackupAt);
-        const stamp=rawStamp&&Number.isFinite(Date.parse(rawStamp))?rawStamp:null;
-        if(busy||!root.calendarBackupIsOverdue(lastBackupAt,date.getTime()))return;
-        // Dismissal applies to this user, calendar and backup date for one day.
-        const key='backup-reminder:'+userUid+':'+calendarId;
-        const value=date.toLocaleDateString('sv-SE')+'|'+(stamp||'never');
-        if(seen.get(key)===value)return;
-        try{if(storage.getItem(key)===value)return;storage.setItem(key,value);}catch{}
-        seen.set(key,value);
-        busy=true;
-        try {
-          const message=stamp?'Kalenterin varmuuskopiota ei ole otettu yli 30 päivään. Tehdäänkö CSV-varmuuskopio nyt?':'Kalenterille ei ole vielä kirjattu varmuuskopiota. Tehdäänkö CSV-varmuuskopio nyt?';
-          if(confirm(message)&&current?.calendarId===calendarId&&current?.userUid===userUid)await makeBackup();
-        } finally {busy=false;}
-      },
-      async check(){if(current)await this.update(current);}
-    };
-  };
 
   root.parseCalendarBackupCsv = function(input) {
     const text=String(input).replace(/^\uFEFF/,''),rows=[];
@@ -115,32 +68,14 @@
     return {payload,calendar,memberCount};
   };
 
-  root.restoreCalendarBackup = async function({payload,expected,user,calendarId,stateRef,memberRef,pendingWrites,executeTransaction,writeMetadata,isCurrent}) {
-    if(!user?.emailVerified||expected.userUid!==user.uid||expected.calendar.id!==calendarId||!isCurrent())throw new Error('Kirjautuminen tai kalenteri vaihtui. Palautusta ei tehty.');
-    await pendingWrites;
-    const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
-    await executeTransaction(async tx=>{
-      const own=await tx.get(memberRef),state=await tx.get(stateRef);
-      if(!isCurrent())throw new Error('Kirjautuminen tai kalenteri vaihtui. Palautusta ei tehty.');
-      if(!own.exists()||!own.data().active||!['owner','admin'].includes(own.data().role))throw new Error('Palautus vaatii omistajan tai ylläpitäjän oikeudet.');
-      if(!state.exists()||canonical(state.data().payload)!==canonical(expected.payload))throw new Error('Kalenteriin tuli uusia muutoksia vahvistuksen aikana. Aloita palautus uudelleen.');
-      // Update only the calendar state, never Auth accounts or membership documents.
-      tx.update(stateRef,{payload,...writeMetadata()});
-    });
-  };
-
-  root.makeCalendarBackupCsv = function({payload,calendar,members},version,exportedAt=new Date()) {
-    if(!Array.isArray(payload.people)||!payload.trips||typeof payload.trips!=='object'||!Array.isArray(members))throw new Error('Kalenterin varmuuskopioitavat tiedot ovat puutteelliset.');
+  root.makeCalendarCsv = function(payload,version) {
+    if(!Array.isArray(payload.people)||!payload.trips||typeof payload.trips!=='object')throw new Error('Kalenterin varmuuskopioitavat tiedot ovat puutteelliset.');
     const rows=[['type','date','direction','person'],['parameter','version','',version]];
     const prices=new Map();
     for(const rate of payload.tripPrices||[])prices.set(rate.date,Number(rate.price));
     if(!prices.has('0001-01-01'))prices.set('0001-01-01',Number(payload.tripPrice??1));
-    let previousPrice;
     for(const [date,price] of [...prices].sort(([a],[b])=>a.localeCompare(b))){
-      const exportedPrice=price.toFixed(2);
-      if(exportedPrice===previousPrice)continue;
-      rows.push(['parameter',date,'tripPrice',exportedPrice]);
-      previousPrice=exportedPrice;
+      rows.push(['parameter',date,'tripPrice',price]);
     }
     const payments=new Map();
     for(const payment of payload.payments||[])payments.set(payment.person+'\u0000'+payment.month,payment);
@@ -154,9 +89,6 @@
       for(const way of ['to','home'])for(const i of entry[way]||[])if(payload.people[i]!==undefined)rows.push(['trip',date,way,payload.people[i]]);
       for(const note of entry.notes||[])rows.push(['note',date,'',note==='Poissa'||note==='Poissa koulusta/ei kuljettu'?'Poissa / ei kuljettu':note]);
     }
-    // Extension records retain the original four-column CSV format.
-    rows.push(['calendar',calendar.id,'metadata',JSON.stringify({...calendar,exportedAt:exportedAt.toISOString(),appVersion:version})]);
-    for(const member of [...members].sort((a,b)=>a.uid.localeCompare(b.uid)))rows.push(['member',member.uid,member.role,JSON.stringify({email:member.email,active:member.active,joinedAt:member.joinedAt})]);
     const cell=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
     return '\uFEFF'+rows.map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';
   };
