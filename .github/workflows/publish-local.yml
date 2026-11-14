@@ -1,0 +1,38 @@
+name: Publish local calendar
+
+on:
+  push:
+    branches: [Kyytikalenteri-local]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: publish-local-calendar
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: Kyytikalenteri-local
+      - name: Update the local calendar on GitHub Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin gh-pages
+          git worktree add --detach "$RUNNER_TEMP/pages" FETCH_HEAD
+          rsync -a --delete --exclude README.md firebase-auth/ "$RUNNER_TEMP/pages/local/"
+          cd "$RUNNER_TEMP/pages"
+          git add -- local
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Publish latest Kyytikalenteri-local'
+          git push origin HEAD:gh-pages
+          # A push by GITHUB_TOKEN does not trigger the branch-based Pages build.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
