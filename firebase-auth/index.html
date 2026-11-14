@@ -204,9 +204,7 @@
           </section>
           <div class="path-row">
             <h3>Kalenteritiedosto</h3>
-            <button class="primary" id="openCsv" type="button" title="Valitse CSV-tiedosto ja avaa sen tiedot kalenteriin.">Avaa CSV</button>
             <button class="primary" id="reloadCsv" type="button" title="Lue valitun CSV-tiedoston tiedot uudelleen. Jos tiedostoa ei ole valittu, avaa tiedoston valinta.">Lataa CSV:n tiedot</button>
-            <button class="primary" id="saveCsv" type="button" title="Tallenna kalenterin tiedot valittuun tai uuteen CSV-tiedostoon.">Tallenna CSV</button>
             <button class="primary" id="downloadCsv" type="button" title="Lataa kalenterin nykyiset tiedot erillisenä CSV-kopiona.">Lataa CSV-kopio</button>
             <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
             <p class="hint" id="csvStatus" role="status"></p>
@@ -362,7 +360,7 @@
         pendingWrite = write.catch(error => {
           if (csvFile === file) {
             csvFile = null;
-            csvStatus(`Tallennus epäonnistui. ${error.message} Valitse Tallenna CSV tai lataa kopio.`);
+            csvStatus(`Automaattinen tallennus epäonnistui. ${error.message} Ota muutoksista talteen CSV-kopio.`);
           }
         });
         return write;
@@ -371,7 +369,7 @@
       function save() {
         revision++;
         if (csvFile) return writeCsv();
-        csvStatus('Tallentamattomia muutoksia. Valitse Tallenna CSV.');
+        csvStatus('Muutoksia ei ole tallennettu. Yhdistä CSV-tiedosto tai lataa muutoksista CSV-kopio.');
       }
 
       async function chooseFile(action) {
@@ -417,23 +415,25 @@
         return true;
       }
 
-      $('openCsv').addEventListener('click', () => {
+      $('reloadCsv').addEventListener('click', () => {
         if (!supportsFileWriting) { $('csvInput').click(); return; }
         chooseFile(async () => {
-          const [handle] = await window.showOpenFilePicker(csvOptions);
-          if (await openCsv(await handle.getFile(), handle)) await rememberCsv(handle);
-        });
-      });
-      $('reloadCsv').addEventListener('click', () => {
-        const handle = csvFile || rememberedCsv;
-        if (!handle) { $('openCsv').click(); return; }
-        chooseFile(async () => {
+          let handle = csvFile || rememberedCsv;
+          if (!handle && revision !== savedRevision && confirm('Luodaanko nykyisistä tiedoista CSV-tiedosto automaattista tallennusta varten?')) {
+            handle = await window.showSaveFilePicker({...csvOptions,suggestedName:'Kyytikalenteri-local.csv'});
+            savedText = await readText(await handle.getFile());
+            csvFile = handle;
+            await writeCsv();
+            await rememberCsv(csvFile);
+            return;
+          }
+          if (!handle) [handle] = await window.showOpenFilePicker(csvOptions);
           if (await handle.requestPermission({mode:'readwrite'}) !== 'granted') {
-            csvStatus('Tiedoston käyttöoikeutta ei myönnetty. Voit valita CSV-tiedoston uudelleen.');
+            csvStatus('Automaattinen tallennus tarvitsee CSV-tiedoston kirjoitusluvan.');
             return;
           }
           await pendingWrite;
-          await openCsv(await handle.getFile(), handle);
+          if (await openCsv(await handle.getFile(), handle)) await rememberCsv(handle);
         });
       });
       $('csvInput').addEventListener('change', async event => {
@@ -441,24 +441,10 @@
         if (file) await chooseFile(() => openCsv(file));
         event.target.value = '';
       });
-      $('saveCsv').addEventListener('click', () => {
-        if (!supportsFileWriting) {
-          downloadCsv();
-          return;
-        }
-        chooseFile(async () => {
-          if (!csvFile) {
-            csvFile = await window.showSaveFilePicker({...csvOptions,suggestedName:'Kyytikalenteri-local.csv'});
-            savedText = null;
-          }
-          await writeCsv();
-          await rememberCsv(csvFile);
-        });
-      });
       $('downloadCsv').addEventListener('click', downloadCsv);
       csvStatus(supportsFileWriting
-        ? 'Avaa CSV-tiedosto tai luo uusi valitsemalla Tallenna CSV. Muutokset tallentuvat valittuun tiedostoon.'
-        : 'Avaa olemassa oleva CSV tai tallenna muutokset lataamalla CSV-tiedosto.');
+        ? 'Valitse CSV kohdasta Lataa CSV:n tiedot. Muutokset tallentuvat valittuun tiedostoon automaattisesti.'
+        : 'Tämä selain ei tue automaattista CSV-tallennusta. Säilytä muutokset lataamalla CSV-kopio.');
 
       const safe = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       const euro = value => Number(value).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2});
