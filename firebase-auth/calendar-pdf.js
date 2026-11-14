@@ -17,7 +17,8 @@
     const monthLabel=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));
     const reportTitle=monthLabel[0].toLocaleUpperCase('fi-FI')+monthLabel.slice(1);
     const reportDate=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(generatedAt);
-    const reportSubtitle='Kyytikalenteri '+clean(version)+' | Ajopäivä '+reportDate;
+    const reportTime=new Intl.DateTimeFormat('fi-FI',{timeStyle:'short'}).format(generatedAt);
+    const reportSubtitle='Kyytikalenteri '+clean(version)+' | '+reportDate+' '+reportTime;
     const green=[35,107,82], red=[170,35,35], ink=[32,43,40], muted=[105,117,112];
     const left=compact?6:12,width=compact?144:186,bottom=281;
     let y=12;
