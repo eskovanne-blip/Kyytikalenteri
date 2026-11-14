@@ -66,8 +66,8 @@
       layout.forEach((row,index)=>{if(y+row.height>bottom){newPage();if(index>0)draw(layout[0],0,true);}draw(row,index,index===0);});
     }
     header();heading('Maksutiedot');
-    const summaryRows=[['Henkilö','A / I / K','Suoritus','Siirto','Saldo'],...summary.map(p=>[p.name,`${p.to} / ${p.home} / ${p.driverRides}`,p.paymentLabel??euro(p.paid),euro(p.carry),money(p.total)])];
-    table(summaryRows,[43,23,30,30,60],8,1.4);
+    const summaryRows=[['Henkilö','Saldo','A / I / K','Suoritus','Siirto'],...summary.map(p=>[p.name,money(p.total),`${p.to} / ${p.home} / ${p.driverRides}`,p.paymentLabel??euro(p.paid),euro(p.carry)])];
+    table(summaryRows,[43,60,23,30,30],8,1.4);
     if(!summary.length){text('Ei kyytejä tai maksuja tässä kuussa.',left,y+2,8);y+=6;}
     y+=3;text('A = aamukyydit, I = iltakyydit, K = kuskina. * tarkoittaa, että maksoit henkilölle.',left,y,6.7,false,muted);y+=7;
     heading('Päiväkohtaiset merkinnät');
