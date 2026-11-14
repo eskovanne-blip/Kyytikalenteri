@@ -1,18 +1,26 @@
 /* PDF layout uses millimetres on A4 portrait. No calendar data leaves the browser. */
 (function(root) {
   'use strict';
-  root.createCalendarPdf = function({month, people, trips, summary, version, generatedAt=new Date(), prepareDocument}) {
+  root.createCalendarPdf = function({month, people, trips, summary, version, generatedAt=new Date(), prepareDocument, compact=false}) {
     const pdf = new root.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
     if(prepareDocument)prepareDocument(pdf);
     const euro = n => Number(n).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const clean = value => String(value ?? '').replace(/[\u0000-\u001f]/g,' ').replace(/\u2212/g,'-');
-    const money = value => Number(value)<0 ? 'Maksettavaa '+euro(-value) : Number(value)>0 ? 'Hyvitystä '+euro(value) : euro(0);
+    const money = value => {
+      const amount=Number(value);
+      if(!amount)return euro(0);
+      return [
+        {text:euro(Math.abs(amount)),bold:amount>0,color:amount>0?green:red},
+        {text:amount>0?' (hyvitystä)':' (maksettavaa)',bold:false}
+      ];
+    };
     const monthLabel=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));
     const reportTitle=monthLabel[0].toLocaleUpperCase('fi-FI')+monthLabel.slice(1);
     const reportDate=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(generatedAt);
-    const reportSubtitle='Kyytikalenteri '+clean(version)+' | Ajopäivä '+reportDate;
-    const green=[35,107,82], ink=[32,43,40], muted=[105,117,112];
-    const left=12,width=186,bottom=281;
+    const reportTime=new Intl.DateTimeFormat('fi-FI',{timeStyle:'short'}).format(generatedAt);
+    const reportSubtitle='Kyytikalenteri '+clean(version)+' | '+reportDate+' '+reportTime;
+    const green=[35,107,82], red=[170,35,35], ink=[32,43,40], muted=[105,117,112];
+    const left=compact?6:12,width=compact?144:186,bottom=281;
     let y=12;
     function text(value,x,top,size=8,bold=false,color=ink) {
       pdf.setFont('helvetica',bold?'bold':'normal'); pdf.setFontSize(size);pdf.setTextColor(...color);
@@ -24,11 +32,20 @@
       text(reportSubtitle+(continued?' | jatkuu':''),left,y,9,false,muted);y+=8;
     }
     function newPage(){pdf.addPage();header(true);}
-    function tableLayout(rows,widths,font,padding) {
+    function tableLayout(rows,widths,font,padding,singleLineColumn) {
       pdf.setFontSize(font);
       return rows.map((row,rowIndex)=>{
         const cells=row.map((cell,i)=>{
           const runs=Array.isArray(cell)?cell:[{text:cell,bold:false}],maxWidth=widths[i]-padding*2;
+          if(i===singleLineColumn&&rowIndex>0){
+            const line=runs.map(run=>({...run,text:clean(run.text)}));
+            const naturalWidth=line.reduce((sum,run)=>{
+              pdf.setFont('helvetica',run.bold?'bold':'normal');
+              return sum+pdf.getTextWidth(run.text);
+            },0);
+            const size=font*Math.min(1,maxWidth/naturalWidth);
+            return [line.map(run=>({...run,size}))];
+          }
           const lines=[[]];let used=0;
           for(const run of runs){
             const bold=rowIndex===0||run.bold;
@@ -41,7 +58,7 @@
                 if(used&&used+charWidth>maxWidth){lines.push([]);used=0;}
                 if(!used&&/\s/.test(char))continue;
                 const line=lines[lines.length-1],last=line[line.length-1];
-                if(last&&last.bold===bold)last.text+=char;else line.push({text:char,bold});
+                if(last&&last.bold===bold&&last.color===run.color)last.text+=char;else line.push({text:char,bold,color:run.color});
                 used+=charWidth;
               }
             }
@@ -51,13 +68,13 @@
         return {cells,height:Math.max(...cells.map(c=>c.length))*font*.352778*1.15+padding*2};
       });
     }
-    function table(rows,widths,font=8,padding=1.5) {
-      const layout=tableLayout(rows,widths,font,padding);
+    function table(rows,widths,font=8,padding=1.5,singleLineColumn) {
+      const layout=tableLayout(rows,widths,font,padding,singleLineColumn);
       function draw(row,index,isHeader=false){
         pdf.setFillColor(...(isHeader?[232,243,237]:index%2?[247,249,248]:[255,255,255]));pdf.rect(left,y,width,row.height,'F');
         let x=left;row.cells.forEach((lines,i)=>{
           lines.forEach((runs,lineIndex)=>{let runX=x+padding;runs.forEach(run=>{
-            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,font,run.bold,isHeader?green:ink);
+            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,run.size??font,run.bold,isHeader?green:run.color??ink);
             runX+=pdf.getTextWidth(run.text);
           });});x+=widths[i];
         });
@@ -66,8 +83,8 @@
       layout.forEach((row,index)=>{if(y+row.height>bottom){newPage();if(index>0)draw(layout[0],0,true);}draw(row,index,index===0);});
     }
     header();heading('Maksutiedot');
-    const summaryRows=[['Henkilö','A / I / K','Suoritus','Siirto','Saldo'],...summary.map(p=>[p.name,`${p.to} / ${p.home} / ${p.driverRides}`,p.paymentLabel??euro(p.paid),euro(p.carry),money(p.total)])];
-    table(summaryRows,[43,23,30,30,60],8,1.4);
+    const summaryRows=[['Henkilö','Saldo','A / I / K','Suoritus','Siirto'],...summary.map(p=>[p.name,money(p.total),`${p.to} / ${p.home} / ${p.driverRides}`,p.paymentLabel??euro(p.paid),euro(p.carry)])];
+    table(summaryRows,compact?[20,43,20,22,39]:[43,60,23,30,30],8,compact?1:1.4);
     if(!summary.length){text('Ei kyytejä tai maksuja tässä kuussa.',left,y+2,8);y+=6;}
     y+=3;text('A = aamukyydit, I = iltakyydit, K = kuskina. * tarkoittaa, että maksoit henkilölle.',left,y,6.7,false,muted);y+=7;
     heading('Päiväkohtaiset merkinnät');
@@ -87,13 +104,15 @@
     });
     const rows=[['Päivä','Aamu','Ilta'],...dayRows];
     let font=7.5,padding=1.1;
-    while(font>6&&tableLayout(rows,[22,82,82],font,padding).reduce((s,r)=>s+r.height,0)>bottom-y-9){font-=.25;padding=Math.max(.6,padding-.1);}
-    table(rows,[22,82,82],font,padding);
+    const dayWidths=compact?[18,45,81]:[22,82,82];
+    const singleLineColumn=compact?1:undefined;
+    while(font>6&&tableLayout(rows,dayWidths,font,padding,singleLineColumn).reduce((s,r)=>s+r.height,0)>bottom-y-9){font-=.25;padding=Math.max(.6,padding-.1);}
+    table(rows,dayWidths,font,padding,singleLineColumn);
     if(!dayRows.length){text('Ei päiväkohtaisia merkintöjä tässä kuussa.',left,y+2,8);y+=6;}
     y+=3;if(y+7>bottom)newPage();
     text('Loma ja poissaolo näkyvät kerran, aamun sarakkeessa.',left,y,6.5,false,muted);
     const pages=pdf.getNumberOfPages();
-    for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setDrawColor(220,229,224);pdf.line(left,285,left+width,285);text('Kyytikalenteri | '+clean(version),left,288,7,false,muted);text(`${i} / ${pages}`,188,288,7,false,muted);}
+    for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setDrawColor(220,229,224);pdf.line(left,285,left+width,285);text('Kyytikalenteri | '+clean(version),left,288,7,false,muted);text(`${i} / ${pages}`,left+width-10,288,7,false,muted);}
     pdf.setProperties({title:reportTitle,subject:'Kuukausiyhteenveto ja päiväkohtaiset merkinnät',creator:'Kyytikalenteri '+version});
     return pdf;
   };
@@ -103,11 +122,11 @@
     const pages=[],scale=8;
     let context,fontSize=8,bold=false,textColor='rgb(32,43,40)',fillColor='#fff',drawColor='#ddd',lineWidth=.15;
     function page() {
-      const canvas=document.createElement('canvas');canvas.width=210*scale;canvas.height=297*scale;
+      const canvas=document.createElement('canvas');canvas.width=156*scale;canvas.height=297*scale;
       context=canvas.getContext('2d');if(!context)throw new Error('Kuvan luonti ei onnistu tässä selaimessa.');
       context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.scale(scale,scale);pages.push(canvas);
     }
-    root.createCalendarPdf({...options,prepareDocument(pdf){
+    root.createCalendarPdf({...options,compact:true,prepareDocument(pdf){
       page();
       const mirror=(name,draw)=>{const original=pdf[name];pdf[name]=function(...args){const result=original.apply(this,args);draw(...args);return result;};};
       mirror('addPage',page);
