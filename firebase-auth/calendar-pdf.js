@@ -6,12 +6,19 @@
     if(prepareDocument)prepareDocument(pdf);
     const euro = n => Number(n).toLocaleString('fi-FI',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const clean = value => String(value ?? '').replace(/[\u0000-\u001f]/g,' ').replace(/\u2212/g,'-');
-    const money = value => Number(value)<0 ? euro(-value)+' Maksettavaa' : Number(value)>0 ? euro(value)+' Hyvitystä' : euro(0);
+    const money = value => {
+      const amount=Number(value);
+      if(!amount)return euro(0);
+      return [
+        {text:euro(Math.abs(amount)),bold:amount>0,color:amount>0?green:red},
+        {text:amount>0?' (hyvitystä)':' (maksettavaa)',bold:false}
+      ];
+    };
     const monthLabel=new Intl.DateTimeFormat('fi-FI',{month:'long',year:'numeric'}).format(new Date(month+'-01T12:00:00'));
     const reportTitle=monthLabel[0].toLocaleUpperCase('fi-FI')+monthLabel.slice(1);
     const reportDate=new Intl.DateTimeFormat('fi-FI',{dateStyle:'short'}).format(generatedAt);
     const reportSubtitle='Kyytikalenteri '+clean(version)+' | Ajopäivä '+reportDate;
-    const green=[35,107,82], ink=[32,43,40], muted=[105,117,112];
+    const green=[35,107,82], red=[170,35,35], ink=[32,43,40], muted=[105,117,112];
     const left=compact?6:12,width=compact?144:186,bottom=281;
     let y=12;
     function text(value,x,top,size=8,bold=false,color=ink) {
@@ -41,7 +48,7 @@
                 if(used&&used+charWidth>maxWidth){lines.push([]);used=0;}
                 if(!used&&/\s/.test(char))continue;
                 const line=lines[lines.length-1],last=line[line.length-1];
-                if(last&&last.bold===bold)last.text+=char;else line.push({text:char,bold});
+                if(last&&last.bold===bold&&last.color===run.color)last.text+=char;else line.push({text:char,bold,color:run.color});
                 used+=charWidth;
               }
             }
@@ -57,7 +64,7 @@
         pdf.setFillColor(...(isHeader?[232,243,237]:index%2?[247,249,248]:[255,255,255]));pdf.rect(left,y,width,row.height,'F');
         let x=left;row.cells.forEach((lines,i)=>{
           lines.forEach((runs,lineIndex)=>{let runX=x+padding;runs.forEach(run=>{
-            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,font,run.bold,isHeader?green:ink);
+            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,font,run.bold,isHeader?green:run.color??ink);
             runX+=pdf.getTextWidth(run.text);
           });});x+=widths[i];
         });
@@ -67,7 +74,7 @@
     }
     header();heading('Maksutiedot');
     const summaryRows=[['Henkilö','Saldo','A / I / K','Suoritus','Siirto'],...summary.map(p=>[p.name,money(p.total),`${p.to} / ${p.home} / ${p.driverRides}`,p.paymentLabel??euro(p.paid),euro(p.carry)])];
-    table(summaryRows,compact?[37,43,20,22,22]:[43,60,23,30,30],8,compact?1:1.4);
+    table(summaryRows,compact?[20,43,20,22,39]:[43,60,23,30,30],8,compact?1:1.4);
     if(!summary.length){text('Ei kyytejä tai maksuja tässä kuussa.',left,y+2,8);y+=6;}
     y+=3;text('A = aamukyydit, I = iltakyydit, K = kuskina. * tarkoittaa, että maksoit henkilölle.',left,y,6.7,false,muted);y+=7;
     heading('Päiväkohtaiset merkinnät');
@@ -87,7 +94,7 @@
     });
     const rows=[['Päivä','Aamu','Ilta'],...dayRows];
     let font=7.5,padding=1.1;
-    const dayWidths=compact?[18,63,63]:[22,82,82];
+    const dayWidths=compact?[18,20,106]:[22,82,82];
     while(font>6&&tableLayout(rows,dayWidths,font,padding).reduce((s,r)=>s+r.height,0)>bottom-y-9){font-=.25;padding=Math.max(.6,padding-.1);}
     table(rows,dayWidths,font,padding);
     if(!dayRows.length){text('Ei päiväkohtaisia merkintöjä tässä kuussa.',left,y+2,8);y+=6;}
