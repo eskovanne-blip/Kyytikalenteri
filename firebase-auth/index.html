@@ -147,7 +147,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.1)</span></h1><p class="hint" id="saveState" role="status"></p></div>
+      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.2)</span></h1><p class="hint" id="saveState" role="status"></p></div>
     </header>
 
     <div id="calendarApp">
@@ -204,7 +204,8 @@
           </section>
           <div class="path-row">
             <h3>Kalenteritiedosto</h3>
-            <button class="primary" id="reloadCsv" type="button" title="Lue valitun CSV-tiedoston tiedot uudelleen. Jos tiedostoa ei ole valittu, avaa tiedoston valinta.">Lataa CSV:n tiedot</button>
+            <p class="hint" id="csvFilename">Ei valittua CSV-tiedostoa</p>
+            <button class="primary" id="reloadCsv" type="button" title="Valitse kalenteriin ladattava CSV-tiedosto tiedostojärjestelmästä.">Lataa CSV:n tiedot</button>
             <button class="primary" id="downloadCsv" type="button" title="Lataa kalenterin nykyiset tiedot erillisenä CSV-kopiona.">Lataa CSV-kopio</button>
             <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
             <p class="hint" id="csvStatus" role="status"></p>
@@ -216,10 +217,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=L1.0.1"></script>
-  <script src="./calendar-backup.js?v=L1.0.1"></script>
+  <script src="./calendar-pdf.js?v=L1.0.2"></script>
+  <script src="./calendar-backup.js?v=L1.0.2"></script>
 
-  <script src="./finland-calendar.js?v=L1.0.1"></script>
+  <script src="./finland-calendar.js?v=L1.0.2"></script>
 
   <script>
     (() => {
@@ -299,7 +300,7 @@
       let savedRevision = 0;
       let choosingFile = false;
       const csvStatus = message => { $('csvStatus').textContent = message; };
-      const csvText = () => window.makeCalendarCsv(data, 'L1.0.1');
+      const csvText = () => window.makeCalendarCsv(data, 'L1.0.2');
       const readText = async file => new TextDecoder().decode(await file.arrayBuffer());
       const supportsFileWriting = typeof window.showOpenFilePicker === 'function' &&
         typeof window.showSaveFilePicker === 'function';
@@ -411,6 +412,7 @@
         savedRevision = revision;
         closePaymentEditor();
         render();
+        $('csvFilename').textContent = file.name;
         csvStatus(`Avattu ${file.name}.`);
         return true;
       }
@@ -418,16 +420,17 @@
       $('reloadCsv').addEventListener('click', () => {
         if (!supportsFileWriting) { $('csvInput').click(); return; }
         chooseFile(async () => {
-          let handle = csvFile || rememberedCsv;
-          if (!handle && revision !== savedRevision && confirm('Luodaanko nykyisistä tiedoista CSV-tiedosto automaattista tallennusta varten?')) {
+          let handle;
+          if (!csvFile && !rememberedCsv && revision !== savedRevision && confirm('Luodaanko nykyisistä tiedoista CSV-tiedosto automaattista tallennusta varten?')) {
             handle = await window.showSaveFilePicker({...csvOptions,suggestedName:'Kyytikalenteri-local.csv'});
             savedText = await readText(await handle.getFile());
             csvFile = handle;
             await writeCsv();
+            $('csvFilename').textContent = handle.name;
             await rememberCsv(csvFile);
             return;
           }
-          if (!handle) [handle] = await window.showOpenFilePicker(csvOptions);
+          [handle] = await window.showOpenFilePicker({...csvOptions,...(rememberedCsv?{startIn:rememberedCsv}:{})});
           if (await handle.requestPermission({mode:'readwrite'}) !== 'granted') {
             csvStatus('Automaattinen tallennus tarvitsee CSV-tiedoston kirjoitusluvan.');
             return;
@@ -580,7 +583,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.1'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.2'});
             pdf.save(`Kyytikalenteri_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -594,7 +597,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.1'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.2'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -809,6 +812,7 @@
         try { rememberedCsv = await rememberedFile('readonly'); }
         catch { return; }
         if (!rememberedCsv) return;
+        $('csvFilename').textContent = rememberedCsv.name;
         if (await rememberedCsv.queryPermission({mode:'readwrite'}) !== 'granted') {
           csvStatus(`Valitse Lataa CSV:n tiedot ja salli tiedoston ${rememberedCsv.name} käyttö.`);
           return;

@@ -1,4 +1,4 @@
-# Kyytikalenteri-local L1.0.1
+# Kyytikalenteri-local L1.0.2
 
 Pura haaran ZIP-tiedosto ja avaa juurikansion `index.html` selaimessa. Kalenteri toimii ilman verkkoyhteyttä ja kirjautumista.
 
