@@ -304,6 +304,32 @@
       const readText = async file => new TextDecoder().decode(await file.arrayBuffer());
       const supportsFileWriting = typeof window.showOpenFilePicker === 'function' &&
         typeof window.showSaveFilePicker === 'function';
+      let rememberedCsv = null;
+      let csvDatabase;
+
+      async function rememberedFile(mode, handle) {
+        csvDatabase ??= new Promise((resolve, reject) => {
+          const request = indexedDB.open('Kyytikalenteri-local', 1);
+          request.onupgradeneeded = () => request.result.createObjectStore('files');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        const db = await csvDatabase;
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction('files', mode);
+          const store = transaction.objectStore('files');
+          const request = mode === 'readonly' ? store.get('calendar') :
+            handle ? store.put(handle, 'calendar') : store.delete('calendar');
+          transaction.oncomplete = () => resolve(request.result);
+          transaction.onabort = () => reject(transaction.error);
+        });
+      }
+
+      async function rememberCsv(handle) {
+        rememberedCsv = handle;
+        try { await rememberedFile('readwrite', handle); }
+        catch { csvStatus('CSV on käytössä. Selain ei voinut muistaa tiedostovalintaa seuraavaa käynnistystä varten.'); }
+      }
 
       window.addEventListener('beforeunload', event => {
         if (savedRevision === revision) return;
@@ -387,12 +413,29 @@
         closePaymentEditor();
         render();
         csvStatus(`Avattu ${file.name}.`);
+        return true;
       }
 
       $('openCsv').addEventListener('click', () => {
         if (!supportsFileWriting) { $('csvInput').click(); return; }
         chooseFile(async () => {
           const [handle] = await window.showOpenFilePicker(csvOptions);
+          if (await openCsv(await handle.getFile(), handle)) await rememberCsv(handle);
+        });
+      });
+      const reloadCsv = document.createElement('button');
+      reloadCsv.type = 'button';
+      reloadCsv.textContent = 'Lataa CSV:n tiedot';
+      $('openCsv').after(reloadCsv);
+      reloadCsv.addEventListener('click', () => {
+        const handle = csvFile || rememberedCsv;
+        if (!handle) { $('openCsv').click(); return; }
+        chooseFile(async () => {
+          if (await handle.requestPermission({mode:'readwrite'}) !== 'granted') {
+            csvStatus('Tiedoston käyttöoikeutta ei myönnetty. Voit valita CSV-tiedoston uudelleen.');
+            return;
+          }
+          await pendingWrite;
           await openCsv(await handle.getFile(), handle);
         });
       });
@@ -412,6 +455,7 @@
             savedText = null;
           }
           await writeCsv();
+          await rememberCsv(csvFile);
         });
       });
       $('downloadCsv').addEventListener('click', downloadCsv);
@@ -778,6 +822,16 @@
       });
       $('detail').addEventListener('click',e=>{if(e.target.closest('#goToday')){const now=new Date();selected=iso(now);cursor=new Date(now.getFullYear(),now.getMonth(),1);render();return;}if(e.target.closest('#addAll')){const everyone=activePeople().map(({index})=>index);data.trips[selected]={...data.trips[selected],to:[...everyone],home:[...everyone]};save();render();return;}if(e.target.closest('#removeAll')){data.trips[selected]={...data.trips[selected],to:[],home:[]};save();render();return;}const removeNote=e.target.closest('[data-remove-note]');if(removeNote){data.trips[selected].notes=(data.trips[selected].notes||[]).filter(note=>note!==removeNote.dataset.removeNote);save();render();}});
       render();
+      if (supportsFileWriting) chooseFile(async () => {
+        try { rememberedCsv = await rememberedFile('readonly'); }
+        catch { return; }
+        if (!rememberedCsv) return;
+        if (await rememberedCsv.queryPermission({mode:'readwrite'}) !== 'granted') {
+          csvStatus(`Valitse Lataa CSV:n tiedot ja salli tiedoston ${rememberedCsv.name} käyttö.`);
+          return;
+        }
+        await openCsv(await rememberedCsv.getFile(), rememberedCsv);
+      });
 
     })();
   </script>
