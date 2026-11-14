@@ -147,7 +147,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.0)</span></h1><p class="hint" id="saveState" role="status"></p></div>
+      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.1)</span></h1><p class="hint" id="saveState" role="status"></p></div>
     </header>
 
     <div id="calendarApp">
@@ -216,10 +216,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=L1.0.0"></script>
-  <script src="./calendar-backup.js?v=L1.0.0"></script>
+  <script src="./calendar-pdf.js?v=L1.0.1"></script>
+  <script src="./calendar-backup.js?v=L1.0.1"></script>
 
-  <script src="./finland-calendar.js?v=L1.0.0"></script>
+  <script src="./finland-calendar.js?v=L1.0.1"></script>
 
   <script>
     (() => {
@@ -299,7 +299,7 @@
       let savedRevision = 0;
       let choosingFile = false;
       const csvStatus = message => { $('csvStatus').textContent = message; };
-      const csvText = () => window.makeCalendarCsv(data, 'L1.0.0');
+      const csvText = () => window.makeCalendarCsv(data, 'L1.0.1');
       const readText = async file => new TextDecoder().decode(await file.arrayBuffer());
       const supportsFileWriting = typeof window.showOpenFilePicker === 'function' &&
         typeof window.showSaveFilePicker === 'function';
@@ -580,7 +580,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.0'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.1'});
             pdf.save(`Kyytikalenteri_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -594,7 +594,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.0'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.1'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
