@@ -31,11 +31,20 @@
       text(reportSubtitle+(continued?' | jatkuu':''),left,y,9,false,muted);y+=8;
     }
     function newPage(){pdf.addPage();header(true);}
-    function tableLayout(rows,widths,font,padding) {
+    function tableLayout(rows,widths,font,padding,singleLineColumn) {
       pdf.setFontSize(font);
       return rows.map((row,rowIndex)=>{
         const cells=row.map((cell,i)=>{
           const runs=Array.isArray(cell)?cell:[{text:cell,bold:false}],maxWidth=widths[i]-padding*2;
+          if(i===singleLineColumn&&rowIndex>0){
+            const line=runs.map(run=>({...run,text:clean(run.text)}));
+            const naturalWidth=line.reduce((sum,run)=>{
+              pdf.setFont('helvetica',run.bold?'bold':'normal');
+              return sum+pdf.getTextWidth(run.text);
+            },0);
+            const size=font*Math.min(1,maxWidth/naturalWidth);
+            return [line.map(run=>({...run,size}))];
+          }
           const lines=[[]];let used=0;
           for(const run of runs){
             const bold=rowIndex===0||run.bold;
@@ -58,13 +67,13 @@
         return {cells,height:Math.max(...cells.map(c=>c.length))*font*.352778*1.15+padding*2};
       });
     }
-    function table(rows,widths,font=8,padding=1.5) {
-      const layout=tableLayout(rows,widths,font,padding);
+    function table(rows,widths,font=8,padding=1.5,singleLineColumn) {
+      const layout=tableLayout(rows,widths,font,padding,singleLineColumn);
       function draw(row,index,isHeader=false){
         pdf.setFillColor(...(isHeader?[232,243,237]:index%2?[247,249,248]:[255,255,255]));pdf.rect(left,y,width,row.height,'F');
         let x=left;row.cells.forEach((lines,i)=>{
           lines.forEach((runs,lineIndex)=>{let runX=x+padding;runs.forEach(run=>{
-            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,font,run.bold,isHeader?green:run.color??ink);
+            text(run.text,runX,y+padding+lineIndex*font*.352778*1.15,run.size??font,run.bold,isHeader?green:run.color??ink);
             runX+=pdf.getTextWidth(run.text);
           });});x+=widths[i];
         });
@@ -94,9 +103,10 @@
     });
     const rows=[['Päivä','Aamu','Ilta'],...dayRows];
     let font=7.5,padding=1.1;
-    const dayWidths=compact?[18,20,106]:[22,82,82];
-    while(font>6&&tableLayout(rows,dayWidths,font,padding).reduce((s,r)=>s+r.height,0)>bottom-y-9){font-=.25;padding=Math.max(.6,padding-.1);}
-    table(rows,dayWidths,font,padding);
+    const dayWidths=compact?[18,45,81]:[22,82,82];
+    const singleLineColumn=compact?1:undefined;
+    while(font>6&&tableLayout(rows,dayWidths,font,padding,singleLineColumn).reduce((s,r)=>s+r.height,0)>bottom-y-9){font-=.25;padding=Math.max(.6,padding-.1);}
+    table(rows,dayWidths,font,padding,singleLineColumn);
     if(!dayRows.length){text('Ei päiväkohtaisia merkintöjä tässä kuussa.',left,y+2,8);y+=6;}
     y+=3;if(y+7>bottom)newPage();
     text('Loma ja poissaolo näkyvät kerran, aamun sarakkeessa.',left,y,6.5,false,muted);
