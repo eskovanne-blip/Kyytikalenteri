@@ -204,9 +204,10 @@
           </section>
           <div class="path-row">
             <h3>Kalenteritiedosto</h3>
-            <button class="primary" id="openCsv" type="button">Avaa CSV</button>
-            <button class="primary" id="saveCsv" type="button">Tallenna CSV</button>
-            <button class="secondary" id="downloadCsv" type="button">Lataa CSV-kopio</button>
+            <button class="primary" id="openCsv" type="button" title="Valitse CSV-tiedosto ja avaa sen tiedot kalenteriin.">Avaa CSV</button>
+            <button class="primary" id="reloadCsv" type="button" title="Lue valitun CSV-tiedoston tiedot uudelleen. Jos tiedostoa ei ole valittu, avaa tiedoston valinta.">Lataa CSV:n tiedot</button>
+            <button class="primary" id="saveCsv" type="button" title="Tallenna kalenterin tiedot valittuun tai uuteen CSV-tiedostoon.">Tallenna CSV</button>
+            <button class="primary" id="downloadCsv" type="button" title="Lataa kalenterin nykyiset tiedot erillisenä CSV-kopiona.">Lataa CSV-kopio</button>
             <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
             <p class="hint" id="csvStatus" role="status"></p>
           </div>
@@ -423,11 +424,7 @@
           if (await openCsv(await handle.getFile(), handle)) await rememberCsv(handle);
         });
       });
-      const reloadCsv = document.createElement('button');
-      reloadCsv.type = 'button';
-      reloadCsv.textContent = 'Lataa CSV:n tiedot';
-      $('openCsv').after(reloadCsv);
-      reloadCsv.addEventListener('click', () => {
+      $('reloadCsv').addEventListener('click', () => {
         const handle = csvFile || rememberedCsv;
         if (!handle) { $('openCsv').click(); return; }
         chooseFile(async () => {
