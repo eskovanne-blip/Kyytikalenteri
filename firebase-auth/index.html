@@ -147,7 +147,7 @@
 <body>
   <main class="shell">
     <header class="page-header">
-      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.4)</span></h1><p class="hint" id="saveState" role="status"></p></div>
+      <div class="header-main"><h1>Kyytikalenteri-local <span class="version">(L1.0.5)</span></h1><p class="hint" id="saveState" role="status"></p></div>
     </header>
 
     <div id="calendarApp">
@@ -217,10 +217,10 @@
     </div>
   </main>
   <script src="./vendor/jspdf.umd.min.js?v=4.2.1"></script>
-  <script src="./calendar-pdf.js?v=L1.0.4"></script>
-  <script src="./calendar-backup.js?v=L1.0.4"></script>
+  <script src="./calendar-pdf.js?v=L1.0.5"></script>
+  <script src="./calendar-backup.js?v=L1.0.5"></script>
 
-  <script src="./finland-calendar.js?v=L1.0.4"></script>
+  <script src="./finland-calendar.js?v=L1.0.5"></script>
 
   <script>
     (() => {
@@ -300,10 +300,11 @@
       let savedRevision = 0;
       let choosingFile = false;
       const csvStatus = message => { $('csvStatus').textContent = message; };
-      const csvText = () => window.makeCalendarCsv(data, 'L1.0.4');
+      const csvText = () => window.makeCalendarCsv(data, 'L1.0.5');
       const readText = async file => new TextDecoder().decode(await file.arrayBuffer());
       const supportsFileWriting = typeof window.showOpenFilePicker === 'function' &&
         typeof window.showSaveFilePicker === 'function';
+      let offeredCsvDownload = false;
       let rememberedCsv = null;
       let csvDatabase;
 
@@ -370,7 +371,14 @@
       function save() {
         revision++;
         if (csvFile) return writeCsv();
-        if (supportsFileWriting && !rememberedCsv && !choosingFile) return chooseFile(createCsv);
+        if (supportsFileWriting && !choosingFile) return chooseFile(createCsv);
+        if (!supportsFileWriting && !offeredCsvDownload) {
+          offeredCsvDownload = true;
+          if (confirm('Selain ei voi avata tallennusikkunaa suoraan. Ladataanko tiedot nimellä Kyytikalenteri-local.csv?')) {
+            downloadCsv();
+            return;
+          }
+        }
         csvStatus('Muutoksia ei ole tallennettu. Yhdistä CSV-tiedosto tai lataa muutoksista CSV-kopio.');
       }
 
@@ -596,7 +604,7 @@
         pdfButton.type='button';pdfButton.className='primary';pdfButton.textContent='Tee PDF';pdfButton.id='createMonthPdf';
         pdfButton.addEventListener('click',()=>{
           try {
-            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.4'});
+            const pdf=window.createCalendarPdf({month:selectedMonth,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.5'});
             pdf.save(`Kyytikalenteri_${selectedMonth}.pdf`);
             status('Kuukausiraportin PDF ladattu.');
           } catch(error) { console.error(error);status('PDF:n luonti epäonnistui. Päivitä sivu ja yritä uudelleen.'); }
@@ -610,7 +618,7 @@
           imageButton.disabled=true;imagePanel.textContent='Muodostetaan kuvaa…';
           try {
             const month=selectedMonth;
-            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.4'});
+            const files=await window.createCalendarImages({month,people:data.people,trips:data.trips,summary:activeCounts,version:'L1.0.5'});
             if(imageButton.isConnected===false)return;
             imageUrls.forEach(url=>URL.revokeObjectURL(url));imageUrls=[];imagePanel.textContent='';
             const hint=document.createElement('p');hint.className='hint';
@@ -821,17 +829,20 @@
       });
       $('detail').addEventListener('click',e=>{if(e.target.closest('#goToday')){const now=new Date();selected=iso(now);cursor=new Date(now.getFullYear(),now.getMonth(),1);render();return;}if(e.target.closest('#addAll')){const everyone=activePeople().map(({index})=>index);data.trips[selected]={...data.trips[selected],to:[...everyone],home:[...everyone]};save();render();return;}if(e.target.closest('#removeAll')){data.trips[selected]={...data.trips[selected],to:[],home:[]};save();render();return;}const removeNote=e.target.closest('[data-remove-note]');if(removeNote){data.trips[selected].notes=(data.trips[selected].notes||[]).filter(note=>note!==removeNote.dataset.removeNote);save();render();}});
       render();
-      if (supportsFileWriting) chooseFile(async () => {
-        try { rememberedCsv = await rememberedFile('readonly'); }
+      if (supportsFileWriting) (async () => {
+        let handle;
+        try { handle = await rememberedFile('readonly'); }
         catch { return; }
-        if (!rememberedCsv) return;
+        if (!handle || revision || choosingFile) return;
+        rememberedCsv = handle;
         $('csvFilename').textContent = rememberedCsv.name;
         if (await rememberedCsv.queryPermission({mode:'readwrite'}) !== 'granted') {
           csvStatus(`Valitse Lataa CSV:n tiedot ja salli tiedoston ${rememberedCsv.name} käyttö.`);
           return;
         }
-        await openCsv(await rememberedCsv.getFile(), rememberedCsv);
-      });
+        const file = await handle.getFile();
+        if (!revision && !choosingFile) await openCsv(file, handle);
+      })().catch(error => csvStatus(error.message));
 
     })();
   </script>
